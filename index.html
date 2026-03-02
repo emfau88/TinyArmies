@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>War Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        :root {
+            --red-primary: #ff416c;
+            --red-dark: #c9184a;
+            --blue-primary: #2193b0;
+            --blue-dark: #0d5c75;
+            --panel-bg: rgba(15, 15, 25, 0.98);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: white;
+        }
+
+        .lang-toggle {
+            position: fixed;
+            top: 5px;
+            right: 5px;
+            z-index: 100;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 15px;
+            padding: 3px;
+            display: flex;
+            gap: 3px;
+        }
+
+        .lang-btn {
+            padding: 4px 8px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            font-weight: bold;
+            font-size: 11px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .lang-btn.active {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .control-section {
+            background: var(--panel-bg);
+            padding: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 4px;
+            align-items: center;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .team-header {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .team-header.red { color: var(--red-primary); }
+        .team-header.blue { color: var(--blue-primary); }
+
+        .unit-btn {
+            flex: 1;
+            padding: 6px 4px;
+            border: none;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            min-height: 44px;
+            justify-content: center;
+            line-height: 1.2;
+            position: relative;
+        }
+
+        .unit-btn:active {
+            transform: scale(0.95);
+        }
+
+        .unit-btn.red {
+            background: linear-gradient(135deg, var(--red-primary), var(--red-dark));
+            color: white;
+        }
+
+        .unit-btn.blue {
+            background: linear-gradient(135deg, var(--blue-primary), var(--blue-dark));
+            color: white;
+        }
+
+        .unit-btn.selected {
+            box-shadow: 0 0 0 2px #ffd700, 0 2px 8px rgba(0,0,0,0.3);
+            transform: translateY(-1px);
+        }
+
+        .unit-icon {
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .unit-cost {
+            font-size: 9px;
+            opacity: 0.9;
+            font-weight: normal;
+        }
+
+        .counter-icon {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 8px;
+            opacity: 0.8;
+        }
+
+        .main-controls {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            padding: 4px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .control-btn {
+            flex: 1;
+            max-width: 100px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+        }
+
+        .btn-pause {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+            touch-action: none;
+            min-height: 0;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .placement-hint {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 15px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        .placement-hint.active {
+            opacity: 1;
+        }
+
+        .balance-legend {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.9);
+            z-index: 10;
+        }
+
+        .balance-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin: 2px 0;
+        }
+
+        .balance-arrow {
+            color: #ffd700;
+        }
+
+        .stats-panel {
+            background: var(--panel-bg);
+            padding: 6px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .team-stats {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        .stats-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .stats-header.red { color: var(--red-primary); }
+        .stats-header.blue { color: var(--blue-primary); }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            margin: 3px 0;
+            color: rgba(255,255,255,0.85);
+        }
+
+        .stat-total {
+            border-top: 1px solid rgba(255,255,255,0.15);
+            margin-top: 5px;
+            padding-top: 5px;
+            font-weight: bold;
+            color: white;
+            font-size: 12px;
+        }
+
+        .fps-counter {
+            position: fixed;
+            top: 5px;
+            left: 5px;
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 10px;
+            z-index: 100;
+            border: 1px solid #0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="lang-toggle">
+        <button class="lang-btn active" onclick="setLanguage('de')" data-lang="de">DE</button>
+        <button class="lang-btn" onclick="setLanguage('en')" data-lang="en">EN</button>
+    </div>
+
+    <div class="fps-counter" id="fps">FPS: 60</div>
+
+    <div class="game-container">
+        <div class="control-section">
+            <div class="control-row">
+                <div class="team-header red" data-i18n="redTeam">ROT</div>
+                <button class="unit-btn red" onclick="selectUnit('red', 'swordsman')">
+                    <span class="counter-icon">🏹✓</span>
+                    <span class="unit-icon">⚔️</span>
+                    <span data-i18n="swordsman">Schwert</span>
+                    <span class="unit-cost">50g</span>
+                </button>
+                <button class="unit-btn red" onclick="selectUnit('red', 'archer')">
+                    <span class="counter-icon">🐴✓</span>
+                    <span class="unit-icon">🏹</span>
+                    <span data-i18n="archer">Bogen</span>
+                    <span class="unit-cost">75g</span>
+                </button>
+                <button class="unit-btn red" onclick="selectUnit('red', 'knight')">
+                    <span class="counter-icon">⚔️✓</span>
+                    <span class="unit-icon">🐴</span>
+                    <span data-i18n="knight">Ritter</span>
+                    <span class="unit-cost">150g</span>
+                </button>
+            </div>
+
+            <div class="control-row">
+                <div class="team-header blue" data-i18n="blueTeam">BLAU</div>
+                <button class="unit-btn blue" onclick="selectUnit('blue', 'swordsman')">
+                    <span class="counter-icon">🏹✓</span>
+                    <span class="unit-icon">⚔️</span>
+                    <span data-i18n="swordsman">Schwert</span>
+                    <span class="unit-cost">50g</span>
+                </button>
+                <button class="unit-btn blue" onclick="selectUnit('blue', 'archer')">
+                    <span class="counter-icon">🐴✓</span>
+                    <span class="unit-icon">🏹</span>
+                    <span data-i18n="archer">Bogen</span>
+                    <span class="unit-cost">75g</span>
+                </button>
+                <button class="unit-btn blue" onclick="selectUnit('blue', 'knight')">
+                    <span class="counter-icon">⚔️✓</span>
+                    <span class="unit-icon">🐴</span>
+                    <span data-i18n="knight">Ritter</span>
+                    <span class="unit-cost">150g</span>
+                </button>
+            </div>
+
+            <div class="main-controls">
+                <button class="control-btn btn-start" id="startBtn" onclick="toggleSimulation()" data-i18n="start">START</button>
+                <button class="control-btn btn-reset" onclick="resetSimulation()" data-i18n="reset">RESET</button>
+            </div>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer">
+            <div class="placement-hint" id="placementHint"></div>
+            <div class="balance-legend">
+                <div class="balance-row">⚔️ <span class="balance-arrow">→</span> 🏹</div>
+                <div class="balance-row">🏹 <span class="balance-arrow">→</span> 🐴</div>
+                <div class="balance-row">🐴 <span class="balance-arrow">→</span> ⚔️</div>
+            </div>
+            <canvas id="gameCanvas"></canvas>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stats-grid">
+                <div class="team-stats">
+                    <div class="stats-header red">
+                        🔴 <span data-i18n="redArmy">Rote Armee</span>
+                    </div>
+                    <div class="stat-row">
+                        <span data-i18n="swordsmen">Schwert:</span>
+                        <span id="red-swordsmen">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span data-i18n="archers">Bogen:</span>
+                        <span id="red-archers">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span data-i18n="knights">Ritter:</span>
+                        <span id="red-knights">0</span>
+                    </div>
+                    <div class="stat-row stat-total">
+                        <span data-i18n="total">Gesamt:</span>
+                        <span id="red-total">0</span>
+                    </div>
+                </div>
+
+                <div class="team-stats">
+                    <div class="stats-header blue">
+                        🔵 <span data-i18n="blueArmy">Blaue Armee</span>
+                    </div>
+                    <div class="stat-row">
+                        <span data-i18n="swordsmen">Schwert:</span>
+                        <span id="blue-swordsmen">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span data-i18n="archers">Bogen:</span>
+                        <span id="blue-archers">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span data-i18n="knights">Ritter:</span>
+                        <span id="blue-knights">0</span>
+                    </div>
+                    <div class="stat-row stat-total">
+                        <span data-i18n="total">Gesamt:</span>
+                        <span id="blue-total">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const i18n = {
+            de: {
+                redTeam: 'ROT',
+                blueTeam: 'BLAU',
+                redArmy: 'Rote Armee',
+                blueArmy: 'Blaue Armee',
+                swordsman: 'Schwert',
+                archer: 'Bogen',
+                knight: 'Ritter',
+                swordsmen: 'Schwert:',
+                archers: 'Bogen:',
+                knights: 'Ritter:',
+                total: 'Gesamt:',
+                start: 'START',
+                pause: 'PAUSE',
+                reset: 'RESET',
+                clickToPlace: 'Tippen zum Platzieren'
+            },
+            en: {
+                redTeam: 'RED',
+                blueTeam: 'BLUE',
+                redArmy: 'Red Army',
+                blueArmy: 'Blue Army',
+                swordsman: 'Sword',
+                archer: 'Archer',
+                knight: 'Knight',
+                swordsmen: 'Sword:',
+                archers: 'Archer:',
+                knights: 'Knight:',
+                total: 'Total:',
+                start: 'START',
+                pause: 'PAUSE',
+                reset: 'RESET',
+                clickToPlace: 'Tap to place'
+            }
+        };
+
+        let currentLang = localStorage.getItem('warSimLang') || 'de';
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('warSimLang', lang);
+            
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (i18n[lang][key]) {
+                    el.textContent = i18n[lang][key];
+                }
+            });
+            
+            updatePlacementHint();
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+
+        function resizeCanvas() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            draw();
+        }
+
+        let isRunning = false;
+        let animationId;
+        let lastTime = 0;
+        let fps = 60;
+        let frameCount = 0;
+        let lastFpsTime = 0;
+
+        const units = [];
+        const projectiles = [];
+        const particles = [];
+        const effects = [];
+
+        // BALANCE: Schwert > Bogen > Ritter > Schwert
+        const TYPE_ADVANTAGE = {
+            swordsman: { strongAgainst: 'archer', weakAgainst: 'knight', bonus: 1.5 },
+            archer: { strongAgainst: 'knight', weakAgainst: 'swordsman', bonus: 1.5 },
+            knight: { strongAgainst: 'swordsman', weakAgainst: 'archer', bonus: 1.5 }
+        };
+
+        const UNIT_TYPES = {
+            swordsman: {
+                hp: 100,
+                damage: 20,
+                speed: 0.75,
+                range: 30,
+                attackSpeed: 2000,
+                color: '#ff6b6b',
+                size: 12,
+                cost: 50
+            },
+            archer: {
+                hp: 60,
+                damage: 15,
+                speed: 0.6,
+                range: 200,
+                attackSpeed: 3000,
+                color: '#ffd93d',
+                size: 10,
+                cost: 75
+            },
+            knight: {
+                hp: 200,
+                damage: 40,
+                speed: 0.8, // etwas langsamer für Charge-Aufbau
+                range: 40,
+                attackSpeed: 2400,
+                color: '#c0c0c0',
+                size: 16,
+                cost: 150,
+                chargeRange: 150, // Charge beginnt bei dieser Distanz
+                chargeSpeed: 3.0, // Charge-Geschwindigkeit
+                chargeCooldown: 5000, // 5 Sekunden Cooldown
+                chargeDamage: 2.0 // 2x Schaden beim Charge
+            }
+        };
+
+        const VETERAN_RANKS = [
+            { kills: 0, title: '', multiplier: 1.0, color: '#ffffff' },
+            { kills: 3, title: 'veteran', multiplier: 1.2, color: '#ffd700' },
+            { kills: 8, title: 'elite', multiplier: 1.5, color: '#ff6b35' },
+            { kills: 15, title: 'hero', multiplier: 2.0, color: '#9d4edd' }
+        ];
+
+        let selectedUnitType = null;
+        let selectedTeam = null;
+
+        class Unit {
+            constructor(team, type, x, y) {
+                this.team = team;
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.stats = { ...UNIT_TYPES[type] };
+                this.hp = this.stats.hp;
+                this.maxHp = this.stats.hp;
+                this.lastAttack = 0;
+                this.target = null;
+                this.vx = 0;
+                this.vy = 0;
+                this.angle = 0;
+                this.isDead = false;
+                this.shieldActive = false;
+                this.shieldTime = 0;
+                this.kills = 0;
+                this.rank = 0;
+                
+                // Charge für Ritter
+                this.isCharging = false;
+                this.lastCharge = 0;
+                this.chargeTargetX = 0;
+                this.chargeTargetY = 0;
+            }
+
+            getCurrentStats() {
+                const rankData = VETERAN_RANKS[this.rank];
+                return {
+                    damage: this.stats.damage * rankData.multiplier,
+                    hp: this.stats.hp * rankData.multiplier,
+                    speed: this.stats.speed * (1 + (this.rank * 0.1))
+                };
+            }
+
+            updateRank() {
+                for (let i = VETERAN_RANKS.length - 1; i >= 0; i--) {
+                    if (this.kills >= VETERAN_RANKS[i].kills) {
+                        this.rank = i;
+                        break;
+                    }
+                }
+            }
+
+            // Berechne Schadensmultiplikator basierend auf Typ-Vorteil
+            getDamageMultiplier(targetType) {
+                const advantage = TYPE_ADVANTAGE[this.type];
+                if (advantage.strongAgainst === targetType) {
+                    return advantage.bonus;
+                } else if (advantage.weakAgainst === targetType) {
+                    return 1 / advantage.bonus;
+                }
+                return 1.0;
+            }
+
+            update(deltaTime) {
+                if (this.isDead) return;
+
+                const currentStats = this.getCurrentStats();
+
+                let nearest = null;
+                let minDist = Infinity;
+                
+                for (const unit of units) {
+                    if (unit.team !== this.team && !unit.isDead) {
+                        const dist = Math.hypot(unit.x - this.x, unit.y - this.y);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = unit;
+                        }
+                    }
+                }
+
+                this.target = nearest;
+
+                if (this.target) {
+                    const dx = this.target.x - this.x;
+                    const dy = this.target.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    this.angle = Math.atan2(dy, dx);
+
+                    // CHARGE LOGIK für Ritter
+                    if (this.type === 'knight' && !this.isCharging) {
+                        const now = Date.now();
+                        const chargeReady = now - this.lastCharge > this.stats.chargeCooldown;
+                        
+                        if (chargeReady && dist > this.stats.range && dist < this.stats.chargeRange) {
+                            // Charge starten!
+                            this.isCharging = true;
+                            this.lastCharge = now;
+                            this.chargeTargetX = this.target.x;
+                            this.chargeTargetY = this.target.y;
+                            createChargeEffect(this.x, this.y, this.team);
+                        }
+                    }
+
+                    let moveSpeed = currentStats.speed;
+                    
+                    if (this.isCharging) {
+                        moveSpeed = this.stats.chargeSpeed;
+                        
+                        // Prüfe ob Charge-Ziel erreicht oder Kollision
+                        const chargeDist = Math.hypot(this.chargeTargetX - this.x, this.chargeTargetY - this.y);
+                        
+                        if (chargeDist < this.stats.range || dist < this.stats.range) {
+                            // Charge trifft!
+                            this.isCharging = false;
+                            const damageMult = this.stats.chargeDamage * this.getDamageMultiplier(this.target.type);
+                            const killed = this.target.takeDamage(currentStats.damage * damageMult, true);
+                            
+                            // Knockback
+                            const knockbackForce = 30;
+                            this.target.x += Math.cos(this.angle) * knockbackForce;
+                            this.target.y += Math.sin(this.angle) * knockbackForce;
+                            
+                            createImpactEffect(this.target.x, this.target.y, this.team);
+                            
+                            if (killed) {
+                                this.kills++;
+                                this.updateRank();
+                            }
+                        }
+                    }
+
+                    if (dist > this.stats.range) {
+                        this.vx = Math.cos(this.angle) * moveSpeed;
+                        this.vy = Math.sin(this.angle) * moveSpeed;
+                        this.x += this.vx;
+                        this.y += this.vy;
+                    } else if (!this.isCharging) {
+                        // Normaler Angriff (nur wenn nicht gerade gecharged)
+                        const now = Date.now();
+                        if (now - this.lastAttack > this.stats.attackSpeed) {
+                            this.attack(currentStats.damage);
+                            this.lastAttack = now;
+                        }
+                    }
+                } else {
+                    this.isCharging = false;
+                }
+
+                this.x = Math.max(20, Math.min(canvas.width - 20, this.x));
+                this.y = Math.max(20, Math.min(canvas.height - 20, this.y));
+
+                if (this.shieldActive) {
+                    this.shieldTime -= deltaTime;
+                    if (this.shieldTime <= 0) {
+                        this.shieldActive = false;
+                    }
+                }
+            }
+
+            attack(damage) {
+                if (this.type === 'archer') {
+                    projectiles.push(new Projectile(
+                        this.x, this.y, 
+                        this.target.x, this.target.y,
+                        this.team, damage, this.getDamageMultiplier(this.target.type)
+                    ));
+                } else {
+                    if (Math.random() < 0.3) {
+                        this.target.activateShield();
+                    }
+                    const damageMult = this.getDamageMultiplier(this.target.type);
+                    const killed = this.target.takeDamage(damage * damageMult);
+                    if (killed) {
+                        this.kills++;
+                        this.updateRank();
+                    }
+                    createSlashEffect(this.target.x, this.target.y, this.team);
+                }
+            }
+
+            takeDamage(damage, isCharge = false) {
+                if (this.shieldActive) {
+                    damage *= 0.3;
+                    createShieldEffect(this.x, this.y);
+                }
+                
+                this.hp -= damage;
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.isDead = true;
+                    createExplosion(this.x, this.y, this.team === 'red' ? '#ff416c' : '#2193b0');
+                    return true;
+                }
+                return false;
+            }
+
+            activateShield() {
+                this.shieldActive = true;
+                this.shieldTime = 500;
+            }
+
+            draw() {
+                if (this.isDead) return;
+
+                const currentStats = this.getCurrentStats();
+                const rankData = VETERAN_RANKS[this.rank];
+
+                const sizeMultiplier = 1 + (this.rank * 0.15);
+                const size = this.stats.size * sizeMultiplier;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Charge-Trail
+                if (this.isCharging) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    for (let i = 1; i <= 3; i++) {
+                        ctx.beginPath();
+                        ctx.arc(-i * 10, 0, size * (1 - i * 0.2), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                ctx.fillStyle = this.team === 'red' ? '#ff416c' : '#2193b0';
+                ctx.beginPath();
+                
+                if (this.type === 'swordsman') {
+                    ctx.arc(0, 0, size, 0, Math.PI * 2);
+                } else if (this.type === 'archer') {
+                    ctx.moveTo(size, 0);
+                    ctx.lineTo(-size / 2, size / 2);
+                    ctx.lineTo(-size / 2, -size / 2);
+                    ctx.closePath();
+                } else if (this.type === 'knight') {
+                    ctx.rect(-size, -size, size * 2, size * 2);
+                }
+                
+                ctx.fill();
+                ctx.strokeStyle = this.isCharging ? '#ffffff' : rankData.color;
+                ctx.lineWidth = this.isCharging ? 4 : (2 + this.rank);
+                ctx.stroke();
+
+                // Glow beim Charge
+                if (this.isCharging) {
+                    ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 20;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.fillStyle = this.stats.color;
+                ctx.beginPath();
+                if (this.type === 'swordsman') {
+                    ctx.rect(5, -2, 15, 4);
+                } else if (this.type === 'archer') {
+                    ctx.rect(5, -8, 2, 16);
+                } else if (this.type === 'knight') {
+                    ctx.rect(8, -6, 20, 12);
+                }
+                ctx.fill();
+
+                if (this.rank > 0 && !this.isCharging) {
+                    ctx.shadowColor = rankData.color;
+                    ctx.shadowBlur = 10 + (this.rank * 5);
+                    ctx.strokeStyle = rankData.color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.restore();
+
+                if (this.shieldActive) {
+                    ctx.strokeStyle = 'rgba(100, 200, 255, 0.8)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, size + 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
+                    ctx.fill();
+                }
+
+                const barWidth = 24;
+                const barHeight = 3;
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(this.x - barWidth/2, this.y - size - 12, barWidth, barHeight);
+                
+                ctx.fillStyle = this.hp > currentStats.hp * 0.5 ? '#0f0' : this.hp > currentStats.hp * 0.25 ? '#ff0' : '#f00';
+                ctx.fillRect(this.x - barWidth/2, this.y - size - 12, barWidth * (this.hp / currentStats.hp), barHeight);
+
+                if (this.rank > 0) {
+                    ctx.fillStyle = rankData.color;
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('★'.repeat(this.rank), this.x, this.y - size - 16);
+                    
+                    ctx.font = '9px Arial';
+                    ctx.fillText(this.kills + '', this.x + 18, this.y - 3);
+                }
+
+                // Charge-Indicator (Cooldown)
+                if (this.type === 'knight' && !this.isCharging) {
+                    const now = Date.now();
+                    const chargeReady = now - this.lastCharge > this.stats.chargeCooldown;
+                    if (!chargeReady) {
+                        const cooldownProgress = (now - this.lastCharge) / this.stats.chargeCooldown;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.fillRect(this.x - 10, this.y + size + 5, 20 * cooldownProgress, 3);
+                    } else {
+                        ctx.fillStyle = '#ffd700';
+                        ctx.font = '8px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('CHARGE', this.x, this.y + size + 12);
+                    }
+                }
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, targetX, targetY, team, damage, typeMultiplier = 1.0) {
+                this.x = x;
+                this.y = y;
+                this.team = team;
+                this.damage = damage;
+                this.typeMultiplier = typeMultiplier;
+                this.speed = 4;
+                const angle = Math.atan2(targetY - y, targetX - x);
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+                this.active = true;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                for (const unit of units) {
+                    if (unit.team !== this.team && !unit.isDead) {
+                        const dist = Math.hypot(unit.x - this.x, unit.y - this.y);
+                        if (dist < 15) {
+                            const killed = unit.takeDamage(this.damage * this.typeMultiplier);
+                            if (killed) {
+                                for (const u of units) {
+                                    if (u.team === this.team && !u.isDead) {
+                                        u.kills++;
+                                        u.updateRank();
+                                        break;
+                                    }
+                                }
+                            }
+                            this.active = false;
+                            createHitEffect(this.x, this.y);
+                            break;
+                        }
+                    }
+                }
+
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.active = false;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.team === 'red' ? '#ff416c' : '#2193b0';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = this.team === 'red' ? 'rgba(255, 65, 108, 0.3)' : 'rgba(33, 147, 176, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x - this.vx * 3, this.y - this.vy * 3);
+                ctx.stroke();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, speed, life) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * speed;
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = Math.sin(this.angle) * this.speed;
+                this.life = life;
+                this.maxLife = life;
+                this.size = Math.random() * 4 + 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1;
+                this.life--;
+                this.size *= 0.98;
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Effect {
+            constructor(x, y, type, color) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.color = color;
+                this.life = 30;
+                this.maxLife = 30;
+                this.size = 0;
+            }
+
+            update() {
+                this.life--;
+                if (this.type === 'explosion') {
+                    this.size += 2;
+                } else if (this.type === 'shield') {
+                    this.size = 40 + Math.sin(this.life * 0.3) * 5;
+                } else if (this.type === 'slash') {
+                    this.size += 3;
+                } else if (this.type === 'charge') {
+                    this.size += 5;
+                } else if (this.type === 'impact') {
+                    this.size += 8;
+                }
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                
+                if (this.type === 'explosion') {
+                    const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                    gradient.addColorStop(0, this.color);
+                    gradient.addColorStop(0.5, 'orange');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size * 1.2, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (this.type === 'shield') {
+                    ctx.strokeStyle = '#64c8ff';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (this.type === 'slash') {
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (Math.PI * 2 / 8) * i + this.life * 0.2;
+                        const r = this.size;
+                        ctx.moveTo(this.x, this.y);
+                        ctx.lineTo(this.x + Math.cos(angle) * r, this.y + Math.sin(angle) * r);
+                    }
+                    ctx.stroke();
+                } else if (this.type === 'charge') {
+                    // Charge-Aura
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([10, 5]);
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                } else if (this.type === 'impact') {
+                    // Aufprall-Effekt
+                    ctx.strokeStyle = '#ffd700';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    for (let i = 0; i < 12; i++) {
+                        const angle = (Math.PI * 2 / 12) * i;
+                        const r = this.size;
+                        ctx.moveTo(this.x, this.y);
+                        ctx.lineTo(this.x + Math.cos(angle) * r, this.y + Math.sin(angle) * r);
+                    }
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            effects.push(new Effect(x, y, 'explosion', color));
+            for (let i = 0; i < 12; i++) {
+                particles.push(new Particle(x, y, color, 5, 40));
+            }
+        }
+
+        function createShieldEffect(x, y) {
+            effects.push(new Effect(x, y, 'shield', '#64c8ff'));
+        }
+
+        function createSlashEffect(x, y, team) {
+            effects.push(new Effect(x, y, 'slash', team === 'red' ? '#ff416c' : '#2193b0'));
+        }
+
+        function createChargeEffect(x, y, team) {
+            effects.push(new Effect(x, y, 'charge', '#ffffff'));
+            // Staub-Partikel
+            for (let i = 0; i < 8; i++) {
+                particles.push(new Particle(x, y, 'rgba(255,255,255,0.5)', 3, 30));
+            }
+        }
+
+        function createImpactEffect(x, y, team) {
+            effects.push(new Effect(x, y, 'impact', '#ffd700'));
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x, y, '#ffd700', 6, 25));
+            }
+        }
+
+        function createHitEffect(x, y) {
+            for (let i = 0; i < 4; i++) {
+                particles.push(new Particle(x, y, '#ffffff', 3, 20));
+            }
+        }
+
+        function selectUnit(team, type) {
+            selectedTeam = team;
+            selectedUnitType = type;
+            
+            document.querySelectorAll('.unit-btn').forEach(btn => btn.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            
+            updatePlacementHint();
+        }
+
+        function updatePlacementHint() {
+            const hint = document.getElementById('placementHint');
+            if (selectedUnitType && selectedTeam) {
+                const typeName = i18n[currentLang][selectedUnitType];
+                hint.textContent = `${i18n[currentLang].clickToPlace}: ${typeName}`;
+                hint.classList.add('active');
+            } else {
+                hint.classList.remove('active');
+            }
+        }
+
+        function handleInput(e) {
+            if (!selectedUnitType || !selectedTeam) return;
+            
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            
+            units.push(new Unit(selectedTeam, selectedUnitType, x, y));
+            updateStats();
+            draw();
+            
+            if (navigator.vibrate) {
+                navigator.vibrate(30);
+            }
+        }
+
+        canvas.addEventListener('click', handleInput);
+        canvas.addEventListener('touchstart', handleInput, { passive: false });
+
+        function updateStats() {
+            const stats = {
+                red: { swordsman: 0, archer: 0, knight: 0, total: 0 },
+                blue: { swordsman: 0, archer: 0, knight: 0, total: 0 }
+            };
+            
+            for (const unit of units) {
+                if (!unit.isDead) {
+                    stats[unit.team][unit.type]++;
+                    stats[unit.team].total++;
+                }
+            }
+            
+            document.getElementById('red-swordsmen').textContent = stats.red.swordsman;
+            document.getElementById('red-archers').textContent = stats.red.archer;
+            document.getElementById('red-knights').textContent = stats.red.knight;
+            document.getElementById('red-total').textContent = stats.red.total;
+            
+            document.getElementById('blue-swordsmen').textContent = stats.blue.swordsman;
+            document.getElementById('blue-archers').textContent = stats.blue.archer;
+            document.getElementById('blue-knights').textContent = stats.blue.knight;
+            document.getElementById('blue-total').textContent = stats.blue.total;
+        }
+
+        function toggleSimulation() {
+            isRunning = !isRunning;
+            const btn = document.getElementById('startBtn');
+            btn.textContent = isRunning ? i18n[currentLang].pause : i18n[currentLang].start;
+            btn.classList.toggle('btn-pause', isRunning);
+            btn.classList.toggle('btn-start', !isRunning);
+            
+            if (isRunning) {
+                lastTime = performance.now();
+                gameLoop();
+            } else {
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        function resetSimulation() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            const btn = document.getElementById('startBtn');
+            btn.textContent = i18n[currentLang].start;
+            btn.classList.remove('btn-pause');
+            btn.classList.add('btn-start');
+            
+            units.length = 0;
+            projectiles.length = 0;
+            particles.length = 0;
+            effects.length = 0;
+            
+            updateStats();
+            draw();
+        }
+
+        function gameLoop() {
+            if (!isRunning) return;
+            
+            const currentTime = performance.now();
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            
+            frameCount++;
+            if (currentTime - lastFpsTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsTime = currentTime;
+                document.getElementById('fps').textContent = `FPS: ${fps}`;
+            }
+            
+            update(deltaTime);
+            draw();
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function update(deltaTime) {
+            for (const unit of units) {
+                unit.update(deltaTime);
+            }
+            
+            for (let i = units.length - 1; i >= 0; i--) {
+                if (units[i].isDead) {
+                    units.splice(i, 1);
+                }
+            }
+            
+            for (const projectile of projectiles) {
+                projectile.update();
+            }
+            
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                if (!projectiles[i].active) {
+                    projectiles.splice(i, 1);
+                }
+            }
+            
+            for (const particle of particles) {
+                particle.update();
+            }
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            for (const effect of effects) {
+                effect.update();
+            }
+            
+            for (let i = effects.length - 1; i >= 0; i--) {
+                if (effects[i].life <= 0) {
+                    effects.splice(i, 1);
+                }
+            }
+            
+            updateStats();
+        }
+
+        function draw() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#98FB98');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            for (const effect of effects) {
+                effect.draw();
+            }
+            
+            for (const projectile of projectiles) {
+                projectile.draw();
+            }
+            
+            for (const unit of units) {
+                unit.draw();
+            }
+            
+            for (const particle of particles) {
+                particle.draw();
+            }
+        }
+
+        setLanguage(currentLang);
+        
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        });
+        
+        if (document.readyState === 'complete') {
+            resizeCanvas();
+        } else {
+            document.addEventListener('DOMContentLoaded', resizeCanvas);
+        }
+    </script>
+</body>
+</html>
