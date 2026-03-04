@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gott-Simulation: KI-vs-KI RTS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #header {
+            background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);
+            padding: 10px 20px;
+            border-bottom: 2px solid #0f3460;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        h1 {
+            font-size: 1.2em;
+            color: #e94560;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+        
+        #controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        button {
+            background: #0f3460;
+            color: #fff;
+            border: 1px solid #e94560;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #e94560;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(233, 69, 96, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.active {
+            background: #e94560;
+            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+        
+        #seedInput {
+            background: #1a1a2e;
+            border: 1px solid #0f3460;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            width: 100px;
+            font-family: monospace;
+        }
+        
+        #mainContainer {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        #sidebar {
+            width: 280px;
+            background: #1a1a2e;
+            border-right: 2px solid #0f3460;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .panel {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid #0f3460;
+        }
+        
+        .panel h3 {
+            color: #e94560;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .faction-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+        
+        .faction-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        
+        .faction-stats {
+            flex: 1;
+            font-size: 0.8em;
+        }
+        
+        .faction-stats div {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        
+        .god-powers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .god-btn {
+            padding: 10px;
+            font-size: 0.8em;
+            border: 1px solid;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .god-btn.positive {
+            border-color: #4ecca3;
+            color: #4ecca3;
+        }
+        
+        .god-btn.positive:hover {
+            background: #4ecca3;
+            color: #000;
+        }
+        
+        .god-btn.negative {
+            border-color: #e94560;
+            color: #e94560;
+        }
+        
+        .god-btn.negative:hover {
+            background: #e94560;
+            color: #fff;
+        }
+        
+        #canvasContainer {
+            flex: 1;
+            position: relative;
+            background: #0a0a0f;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        #tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            border: 1px solid #e94560;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            max-width: 200px;
+        }
+        
+        .stat-bar {
+            height: 4px;
+            background: #0a0a0f;
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        
+        .stat-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        
+        #simulationSpeed {
+            width: 100%;
+            margin-top: 5px;
+        }
+        
+        .log-entry {
+            font-size: 0.75em;
+            padding: 4px;
+            margin: 2px 0;
+            border-left: 2px solid #0f3460;
+            padding-left: 8px;
+            opacity: 0.8;
+        }
+        
+        .log-entry.important {
+            border-left-color: #e94560;
+            opacity: 1;
+            font-weight: bold;
+        }
+        
+        #eventLog {
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 0.85em;
+        }
+        
+        .mini-map {
+            width: 100%;
+            height: 150px;
+            background: #0a0a0f;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        @media (max-width: 768px) {
+            #sidebar {
+                width: 200px;
+                padding: 10px;
+            }
+            
+            .god-powers {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🏛️ GOTT-SIMULATION</h1>
+        <div id="controls">
+            <label>Seed: <input type="text" id="seedInput" value="42" maxlength="10"></label>
+            <button onclick="game.generateWorld()">🌍 Neue Welt</button>
+            <button onclick="game.togglePause()" id="pauseBtn">⏸️ Pause</button>
+            <button onclick="game.speed = game.speed === 1 ? 2 : game.speed === 2 ? 4 : 1; this.textContent = game.speed + 'x'">1x</button>
+            <span style="font-size: 0.8em; color: #888;">Tick: <span id="tickCount">0</span></span>
+        </div>
+    </div>
+    
+    <div id="mainContainer">
+        <div id="sidebar">
+            <div class="panel">
+                <h3>📊 Fraktionen</h3>
+                <div id="factionsList"></div>
+            </div>
+            
+            <div class="panel">
+                <h3>⚡ Gott-Kräfte</h3>
+                <div class="god-powers">
+                    <button class="god-btn positive" onclick="game.selectGodPower('bless')" id="btn-bless">🌧️ Segen</button>
+                    <button class="god-btn positive" onclick="game.selectGodPower('resources')" id="btn-resources">📦 Ressourcen</button>
+                    <button class="god-btn positive" onclick="game.selectGodPower('growth')" id="btn-growth">⚡ Wachstum</button>
+                    <button class="god-btn positive" onclick="game.selectGodPower('heal')" id="btn-heal">💚 Heilen</button>
+                    <button class="god-btn negative" onclick="game.selectGodPower('lightning')" id="btn-lightning">⚡ Blitz</button>
+                    <button class="god-btn negative" onclick="game.selectGodPower('fire')" id="btn-fire">🔥 Feuer</button>
+                    <button class="god-btn negative" onclick="game.selectGodPower('monster')" id="btn-monster">👹 Monster</button>
+                    <button class="god-btn negative" onclick="game.selectGodPower('plague')" id="btn-plague">☠️ Plage</button>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.8em; color: #888; text-align: center;">
+                    Aktiv: <span id="activePower" style="color: #e94560; font-weight: bold;">-</span>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>🗺️ Minimap</h3>
+                <canvas id="minimap" class="mini-map" width="250" height="150"></canvas>
+            </div>
+            
+            <div class="panel">
+                <h3>📜 Ereignisse</h3>
+                <div id="eventLog"></div>
+            </div>
+        </div>
+        
+        <div id="canvasContainer">
+            <canvas id="gameCanvas"></canvas>
+            <div id="tooltip"></div>
+        </div>
+    </div>
+
+    <script>
+        // Deterministic Random Number Generator (Mulberry32)
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = seed;
+            }
+            
+            next() {
+                let t = this.seed += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+            
+            nextInt(min, max) {
+                return Math.floor(this.next() * (max - min + 1)) + min;
+            }
+            
+            nextBool(probability = 0.5) {
+                return this.next() < probability;
+            }
+        }
+
+        // A* Pathfinding
+        class Pathfinder {
+            static findPath(grid, start, end, isWalkable) {
+                const openSet = [];
+                const closedSet = new Set();
+                const cameFrom = new Map();
+                const gScore = new Map();
+                const fScore = new Map();
+                
+                const startKey = `${start.x},${start.y}`;
+                const endKey = `${end.x},${end.y}`;
+                
+                openSet.push(start);
+                gScore.set(startKey, 0);
+                fScore.set(startKey, this.heuristic(start, end));
+                
+                while (openSet.length > 0) {
+                    let current = openSet.reduce((a, b) => 
+                        (fScore.get(`${a.x},${a.y}`) || Infinity) < (fScore.get(`${b.x},${b.y}`) || Infinity) ? a : b
+                    );
+                    
+                    const currentKey = `${current.x},${current.y}`;
+                    
+                    if (current.x === end.x && current.y === end.y) {
+                        return this.reconstructPath(cameFrom, current);
+                    }
+                    
+                    openSet.splice(openSet.indexOf(current), 1);
+                    closedSet.add(currentKey);
+                    
+                    const neighbors = this.getNeighbors(current, grid);
+                    for (const neighbor of neighbors) {
+                        const neighborKey = `${neighbor.x},${neighbor.y}`;
+                        
+                        if (closedSet.has(neighborKey)) continue;
+                        if (!isWalkable(neighbor.x, neighbor.y)) continue;
+                        
+                        const tentativeG = (gScore.get(currentKey) || 0) + 1;
+                        
+                        if (!openSet.find(n => n.x === neighbor.x && n.y === neighbor.y)) {
+                            openSet.push(neighbor);
+                        } else if (tentativeG >= (gScore.get(neighborKey) || Infinity)) {
+                            continue;
+                        }
+                        
+                        cameFrom.set(neighborKey, current);
+                        gScore.set(neighborKey, tentativeG);
+                        fScore.set(neighborKey, tentativeG + this.heuristic(neighbor, end));
+                    }
+                }
+                
+                return null;
+            }
+            
+            static heuristic(a, b) {
+                return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+            }
+            
+            static getNeighbors(node, grid) {
+                const dirs = [[0,1], [1,0], [0,-1], [-1,0]];
+                const neighbors = [];
+                
+                for (const [dx, dy] of dirs) {
+                    const nx = node.x + dx;
+                    const ny = node.y + dy;
+                    if (nx >= 0 && nx < grid.width && ny >= 0 && ny < grid.height) {
+                        neighbors.push({x: nx, y: ny});
+                    }
+                }
+                
+                return neighbors;
+            }
+            
+            static reconstructPath(cameFrom, current) {
+                const path = [current];
+                let key = `${current.x},${current.y}`;
+                
+                while (cameFrom.has(key)) {
+                    current = cameFrom.get(key);
+                    path.unshift(current);
+                    key = `${current.x},${current.y}`;
+                }
+                
+                return path;
+            }
+        }
+
+        // Terrain Types
+        const TERRAIN = {
+            WATER: 0,
+            GRASS: 1,
+            FOREST: 2,
+            HILL: 3
+        };
+
+        // Entity Types
+        const ENTITY = {
+            WORKER: 'worker',
+            SOLDIER: 'soldier',
+            VILLAGE: 'village',
+            HOUSE: 'house',
+            BARRACKS: 'barracks',
+            TREE: 'tree',
+            ROCK: 'rock',
+            MONSTER: 'monster'
+        };
+
+        // World Grid (SSOT)
+        class WorldGrid {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+                this.terrain = new Uint8Array(width * height);
+                this.resources = new Map(); // x,y -> {type, amount}
+                this.entities = new Map(); // x,y -> entity
+                this.factionTerritory = new Int8Array(width * height); // -1 = neutral, 0+ = faction id
+            }
+            
+            getIndex(x, y) {
+                return y * this.width + x;
+            }
+            
+            getTerrain(x, y) {
+                if (x < 0 || x >= this.width || y < 0 || y >= this.height) return TERRAIN.WATER;
+                return this.terrain[this.getIndex(x, y)];
+            }
+            
+            setTerrain(x, y, type) {
+                if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                    this.terrain[this.getIndex(x, y)] = type;
+                }
+            }
+            
+            isWalkable(x, y) {
+                const terrain = this.getTerrain(x, y);
+                return terrain !== TERRAIN.WATER && !this.entities.has(`${x},${y}`);
+            }
+            
+            getResource(x, y) {
+                return this.resources.get(`${x},${y}`);
+            }
+            
+            setResource(x, y, resource) {
+                this.resources.set(`${x},${y}`, resource);
+            }
+            
+            removeResource(x, y) {
+                this.resources.delete(`${x},${y}`);
+            }
+            
+            getEntity(x, y) {
+                return this.entities.get(`${x},${y}`);
+            }
+            
+            setEntity(x, y, entity) {
+                this.entities.set(`${x},${y}`, entity);
+            }
+            
+            removeEntity(x, y) {
+                this.entities.delete(`${x},${y}`);
+            }
+            
+            getTerritory(x, y) {
+                if (x < 0 || x >= this.width || y < 0 || y >= this.height) return -1;
+                return this.factionTerritory[this.getIndex(x, y)];
+            }
+            
+            setTerritory(x, y, factionId) {
+                if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                    this.factionTerritory[this.getIndex(x, y)] = factionId;
+                }
+            }
+        }
+
+        // Faction AI
+        class Faction {
+            constructor(id, name, color, startX, startY) {
+                this.id = id;
+                this.name = name;
+                this.color = color;
+                this.startX = startX;
+                this.startY = startY;
+                
+                this.wood = 50;
+                this.stone = 30;
+                this.population = 0;
+                this.populationCap = 10;
+                this.soldiers = 0;
+                this.workers = 0;
+                
+                this.buildings = [];
+                this.units = [];
+                this.kills = 0;
+                this.losses = 0;
+                
+                this.aiTimer = 0;
+                this.strategy = {
+                    woodPriority: 1,
+                    expandAggression: 0.5,
+                    defenseFocus: 0.3
+                };
+            }
+            
+            updateAI(world, rng) {
+                this.aiTimer++;
+                if (this.aiTimer < 30) return; // AI tick every 30 frames
+                this.aiTimer = 0;
+                
+                // Strategic decisions
+                const woodRatio = this.wood / (this.populationCap * 10 + 50);
+                const soldierRatio = this.soldiers / (this.population + 1);
+                const enemyNearby = this.detectEnemies(world);
+                
+                // Decision: Build house if population near cap
+                if (this.population >= this.populationCap - 2 && this.wood >= 30) {
+                    this.buildHouse(world, rng);
+                }
+                
+                // Decision: Build barracks if enough resources and no barracks
+                else if (this.wood >= 50 && this.stone >= 20 && !this.hasBuilding(ENTITY.BARRACKS)) {
+                    this.buildBarracks(world, rng);
+                }
+                
+                // Decision: Recruit soldiers if barracks exists and military is weak
+                else if (this.hasBuilding(ENTITY.BARRACKS) && this.wood >= 20 && soldierRatio < 0.4) {
+                    this.recruitSoldier(world, rng);
+                }
+                
+                // Decision: Recruit workers if low on resources
+                else if (this.wood >= 10 && this.workers < 5 && this.population < this.populationCap) {
+                    this.recruitWorker(world, rng);
+                }
+                
+                // Decision: Attack if strong enough
+                else if (this.soldiers >= 5 && enemyNearby && rng.next() < 0.3) {
+                    this.launchAttack(world, rng);
+                }
+                
+                // Decision: Expand village if resources abundant
+                else if (this.wood > 100 && this.stone > 50 && rng.next() < 0.2) {
+                    this.expandVillage(world, rng);
+                }
+            }
+            
+            detectEnemies(world) {
+                for (let unit of this.units) {
+                    for (let dx = -8; dx <= 8; dx++) {
+                        for (let dy = -8; dy <= 8; dy++) {
+                            const ex = unit.x + dx;
+                            const ey = unit.y + dy;
+                            const entity = world.getEntity(ex, ey);
+                            if (entity && entity.factionId !== undefined && entity.factionId !== this.id) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            hasBuilding(type) {
+                return this.buildings.some(b => b.type === type);
+            }
+            
+            buildHouse(world, rng) {
+                const spot = this.findBuildSpot(world, rng);
+                if (spot) {
+                    const house = {
+                        type: ENTITY.HOUSE,
+                        x: spot.x,
+                        y: spot.y,
+                        factionId: this.id,
+                        hp: 50
+                    };
+                    world.setEntity(spot.x, spot.y, house);
+                    this.buildings.push(house);
+                    this.wood -= 30;
+                    this.populationCap += 5;
+                    game.log(`${this.name} baut Haus`, 'normal');
+                }
+            }
+            
+            buildBarracks(world, rng) {
+                const spot = this.findBuildSpot(world, rng);
+                if (spot) {
+                    const barracks = {
+                        type: ENTITY.BARRACKS,
+                        x: spot.x,
+                        y: spot.y,
+                        factionId: this.id,
+                        hp: 80
+                    };
+                    world.setEntity(spot.x, spot.y, barracks);
+                    this.buildings.push(barracks);
+                    this.wood -= 50;
+                    this.stone -= 20;
+                    game.log(`${this.name} errichtet Kaserne`, 'important');
+                }
+            }
+            
+            recruitWorker(world, rng) {
+                const spot = this.findSpawnSpot(world, rng);
+                if (spot && this.population < this.populationCap) {
+                    const worker = {
+                        type: ENTITY.WORKER,
+                        x: spot.x,
+                        y: spot.y,
+                        factionId: this.id,
+                        hp: 20,
+                        maxHp: 20,
+                        state: 'idle',
+                        target: null,
+                        carriedResource: null
+                    };
+                    world.setEntity(spot.x, spot.y, worker);
+                    this.units.push(worker);
+                    this.population++;
+                    this.workers++;
+                    this.wood -= 10;
+                }
+            }
+            
+            recruitSoldier(world, rng) {
+                const spot = this.findSpawnSpot(world, rng);
+                if (spot && this.population < this.populationCap && this.hasBuilding(ENTITY.BARRACKS)) {
+                    const soldier = {
+                        type: ENTITY.SOLDIER,
+                        x: spot.x,
+                        y: spot.y,
+                        factionId: this.id,
+                        hp: 40,
+                        maxHp: 40,
+                        attack: 10,
+                        state: 'patrol',
+                        target: null
+                    };
+                    world.setEntity(spot.x, spot.y, soldier);
+                    this.units.push(soldier);
+                    this.population++;
+                    this.soldiers++;
+                    this.wood -= 20;
+                }
+            }
+            
+            launchAttack(world, rng) {
+                // Find enemy target
+                let target = null;
+                for (let unit of this.units) {
+                    for (let dx = -10; dx <= 10; dx++) {
+                        for (let dy = -10; dy <= 10; dy++) {
+                            const ex = unit.x + dx;
+                            const ey = unit.y + dy;
+                            const entity = world.getEntity(ex, ey);
+                            if (entity && entity.factionId !== undefined && entity.factionId !== this.id) {
+                                target = {x: ex, y: ey};
+                                break;
+                            }
+                        }
+                        if (target) break;
+                    }
+                    if (target) break;
+                }
+                
+                if (target) {
+                    this.units.forEach(u => {
+                        if (u.type === ENTITY.SOLDIER) {
+                            u.state = 'attack';
+                            u.target = {...target};
+                        }
+                    });
+                    game.log(`${this.name} startet Angriff!`, 'important');
+                }
+            }
+            
+            expandVillage(world, rng) {
+                // Build additional village center
+                const spot = this.findBuildSpot(world, rng, 5);
+                if (spot && this.wood >= 100) {
+                    const village = {
+                        type: ENTITY.VILLAGE,
+                        x: spot.x,
+                        y: spot.y,
+                        factionId: this.id,
+                        hp: 100
+                    };
+                    world.setEntity(spot.x, spot.y, village);
+                    this.buildings.push(village);
+                    this.wood -= 100;
+                    this.populationCap += 10;
+                    game.log(`${this.name} gründet neue Siedlung`, 'important');
+                }
+            }
+            
+            findBuildSpot(world, rng, minDist = 2) {
+                for (let i = 0; i < 20; i++) {
+                    const angle = rng.next() * Math.PI * 2;
+                    const dist = minDist + rng.next() * 5;
+                    const x = Math.floor(this.startX + Math.cos(angle) * dist);
+                    const y = Math.floor(this.startY + Math.sin(angle) * dist);
+                    
+                    if (world.isWalkable(x, y) && !world.getEntity(x, y)) {
+                        return {x, y};
+                    }
+                }
+                return null;
+            }
+            
+            findSpawnSpot(world, rng) {
+                // Find spot near village center or buildings
+                const buildings = this.buildings;
+                if (buildings.length === 0) return {x: this.startX, y: this.startY};
+                
+                const building = buildings[rng.nextInt(0, buildings.length - 1)];
+                for (let i = 0; i < 10; i++) {
+                    const dx = rng.nextInt(-2, 2);
+                    const dy = rng.nextInt(-2, 2);
+                    const x = building.x + dx;
+                    const y = building.y + dy;
+                    
+                    if (world.isWalkable(x, y) && !world.getEntity(x, y)) {
+                        return {x, y};
+                    }
+                }
+                return null;
+            }
+        }
+
+        // Main Game Class
+        class GodSimulation {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.minimap = document.getElementById('minimap');
+                this.minimapCtx = this.minimap.getContext('2d');
+                
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                
+                this.seed = 42;
+                this.rng = new SeededRandom(this.seed);
+                this.world = null;
+                this.factions = [];
+                this.tick = 0;
+                this.paused = false;
+                this.speed = 1;
+                
+                this.camera = {x: 0, y: 0, zoom: 1};
+                this.selectedPower = null;
+                this.particles = [];
+                this.events = [];
+                
+                this.setupInput();
+                this.generateWorld();
+                this.loop();
+            }
+            
+            resize() {
+                const container = document.getElementById('canvasContainer');
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.camera = this.camera || {x: 0, y: 0, zoom: 1};
+            }
+            
+            setupInput() {
+                let isDragging = false;
+                let lastX, lastY;
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    
+                    if (this.selectedPower) {
+                        this.useGodPower(e);
+                    }
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (isDragging && !this.selectedPower) {
+                        this.camera.x += (e.clientX - lastX) / this.camera.zoom;
+                        this.camera.y += (e.clientY - lastY) / this.camera.zoom;
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+                    }
+                    this.updateTooltip(e);
+                });
+                
+                this.canvas.addEventListener('mouseup', () => isDragging = false);
+                
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                    this.camera.zoom = Math.max(0.5, Math.min(3, this.camera.zoom * zoomFactor));
+                });
+            }
+            
+            generateWorld() {
+                const seedInput = document.getElementById('seedInput').value;
+                this.seed = parseInt(seedInput) || Math.floor(Math.random() * 100000);
+                document.getElementById('seedInput').value = this.seed;
+                this.rng = new SeededRandom(this.seed);
+                
+                this.world = new WorldGrid(80, 60);
+                this.factions = [];
+                this.tick = 0;
+                this.particles = [];
+                this.events = [];
+                
+                // Generate terrain
+                this.generateTerrain();
+                
+                // Place resources
+                this.placeResources();
+                
+                // Create factions
+                const colors = ['#e94560', '#4ecca3', '#f9d423', '#a8e6cf', '#ff6b6b'];
+                const names = ['Crimson Imperium', 'Viridian Horde', 'Golden Legion', 'Azure Dominion', 'Shadow Clan'];
+                
+                for (let i = 0; i < 4; i++) {
+                    let x, y;
+                    let attempts = 0;
+                    do {
+                        x = this.rng.nextInt(10, this.world.width - 10);
+                        y = this.rng.nextInt(10, this.world.height - 10);
+                        attempts++;
+                    } while (!this.isValidStartLocation(x, y) && attempts < 100);
+                    
+                    if (attempts < 100) {
+                        const faction = new Faction(i, names[i], colors[i], x, y);
+                        this.factions.push(faction);
+                        
+                        // Create starting village
+                        const village = {
+                            type: ENTITY.VILLAGE,
+                            x: x,
+                            y: y,
+                            factionId: i,
+                            hp: 100
+                        };
+                        this.world.setEntity(x, y, village);
+                        faction.buildings.push(village);
+                        
+                        // Create initial workers
+                        for (let j = 0; j < 3; j++) {
+                            const spot = faction.findSpawnSpot(this.world, this.rng);
+                            if (spot) {
+                                const worker = {
+                                    type: ENTITY.WORKER,
+                                    x: spot.x,
+                                    y: spot.y,
+                                    factionId: i,
+                                    hp: 20,
+                                    maxHp: 20,
+                                    state: 'idle',
+                                    target: null,
+                                    carriedResource: null
+                                };
+                                this.world.setEntity(spot.x, spot.y, worker);
+                                faction.units.push(worker);
+                                faction.population++;
+                                faction.workers++;
+                            }
+                        }
+                    }
+                }
+                
+                this.log(`Welt generiert (Seed: ${this.seed})`, 'important');
+                this.updateUI();
+            }
+            
+            generateTerrain() {
+                // Simple noise-based terrain generation
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const noise = this.rng.next();
+                        
+                        if (noise < 0.15) {
+                            this.world.setTerrain(x, y, TERRAIN.WATER);
+                        } else if (noise < 0.45) {
+                            this.world.setTerrain(x, y, TERRAIN.FOREST);
+                        } else if (noise < 0.6) {
+                            this.world.setTerrain(x, y, TERRAIN.HILL);
+                        } else {
+                            this.world.setTerrain(x, y, TERRAIN.GRASS);
+                        }
+                    }
+                }
+                
+                // Smooth terrain
+                for (let i = 0; i < 3; i++) {
+                    this.smoothTerrain();
+                }
+            }
+            
+            smoothTerrain() {
+                const newTerrain = new Uint8Array(this.world.width * this.world.height);
+                
+                for (let y = 1; y < this.world.height - 1; y++) {
+                    for (let x = 1; x < this.world.width - 1; x++) {
+                        const neighbors = [];
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                neighbors.push(this.world.getTerrain(x + dx, y + dy));
+                            }
+                        }
+                        
+                        const counts = {};
+                        neighbors.forEach(t => counts[t] = (counts[t] || 0) + 1);
+                        
+                        let maxCount = 0;
+                        let maxType = TERRAIN.GRASS;
+                        for (const [type, count] of Object.entries(counts)) {
+                            if (count > maxCount) {
+                                maxCount = count;
+                                maxType = parseInt(type);
+                            }
+                        }
+                        
+                        newTerrain[y * this.world.width + x] = maxType;
+                    }
+                }
+                
+                this.world.terrain = newTerrain;
+            }
+            
+            placeResources() {
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const terrain = this.world.getTerrain(x, y);
+                        
+                        if (terrain === TERRAIN.FOREST && this.rng.next() < 0.7) {
+                            this.world.setResource(x, y, {type: 'wood', amount: 50});
+                        } else if (terrain === TERRAIN.HILL && this.rng.next() < 0.4) {
+                            this.world.setResource(x, y, {type: 'stone', amount: 30});
+                        }
+                    }
+                }
+            }
+            
+            isValidStartLocation(x, y) {
+                if (this.world.getTerrain(x, y) === TERRAIN.WATER) return false;
+                
+                // Check distance from other factions
+                for (let faction of this.factions) {
+                    const dist = Math.sqrt((x - faction.startX) ** 2 + (y - faction.startY) ** 2);
+                    if (dist < 15) return false;
+                }
+                
+                return true;
+            }
+            
+            update() {
+                if (this.paused) return;
+                
+                for (let s = 0; s < this.speed; s++) {
+                    this.tick++;
+                    
+                    // Update factions
+                    this.factions.forEach(faction => {
+                        faction.updateAI(this.world, this.rng);
+                        this.updateFactionUnits(faction);
+                    });
+                    
+                    // Update particles
+                    this.particles = this.particles.filter(p => {
+                        p.life--;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        return p.life > 0;
+                    });
+                    
+                    // Update territory
+                    this.updateTerritory();
+                }
+                
+                if (this.tick % 10 === 0) {
+                    this.updateUI();
+                }
+            }
+            
+            updateFactionUnits(faction) {
+                faction.units = faction.units.filter(unit => {
+                    if (unit.hp <= 0) {
+                        this.world.removeEntity(unit.x, unit.y);
+                        faction.losses++;
+                        return false;
+                    }
+                    
+                    this.updateUnit(unit, faction);
+                    return true;
+                });
+                
+                faction.buildings = faction.buildings.filter(building => {
+                    if (building.hp <= 0) {
+                        this.world.removeEntity(building.x, building.y);
+                        if (building.type === ENTITY.HOUSE) faction.populationCap -= 5;
+                        return false;
+                    }
+                    return true;
+                });
+                
+                faction.population = faction.units.length;
+                faction.soldiers = faction.units.filter(u => u.type === ENTITY.SOLDIER).length;
+                faction.workers = faction.units.filter(u => u.type === ENTITY.WORKER).length;
+            }
+            
+            updateUnit(unit, faction) {
+                // Clear old position
+                const currentEntity = this.world.getEntity(unit.x, unit.y);
+                if (currentEntity === unit) {
+                    this.world.removeEntity(unit.x, unit.y);
+                }
+                
+                if (unit.type === ENTITY.WORKER) {
+                    this.updateWorker(unit, faction);
+                } else if (unit.type === ENTITY.SOLDIER) {
+                    this.updateSoldier(unit, faction);
+                } else if (unit.type === ENTITY.MONSTER) {
+                    this.updateMonster(unit);
+                }
+                
+                // Set new position
+                this.world.setEntity(unit.x, unit.y, unit);
+            }
+            
+            updateWorker(worker, faction) {
+                switch (worker.state) {
+                    case 'idle':
+                        // Find resource to gather
+                        let nearestResource = null;
+                        let nearestDist = Infinity;
+                        
+                        for (let dx = -10; dx <= 10; dx++) {
+                            for (let dy = -10; dy <= 10; dy++) {
+                                const rx = worker.x + dx;
+                                const ry = worker.y + dy;
+                                const resource = this.world.getResource(rx, ry);
+                                if (resource && resource.amount > 0) {
+                                    const dist = Math.abs(dx) + Math.abs(dy);
+                                    if (dist < nearestDist) {
+                                        nearestDist = dist;
+                                        nearestResource = {x: rx, y: ry, ...resource};
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (nearestResource) {
+                            worker.state = 'gathering';
+                            worker.target = nearestResource;
+                        } else {
+                            // Random wander
+                            if (this.rng.next() < 0.1) {
+                                const dx = this.rng.nextInt(-1, 1);
+                                const dy = this.rng.nextInt(-1, 1);
+                                const nx = worker.x + dx;
+                                const ny = worker.y + dy;
+                                if (this.world.isWalkable(nx, ny)) {
+                                    worker.x = nx;
+                                    worker.y = ny;
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'gathering':
+                        if (!worker.target || this.world.getResource(worker.target.x, worker.target.y)?.amount <= 0) {
+                            worker.state = 'idle';
+                            worker.target = null;
+                            break;
+                        }
+                        
+                        const distToResource = Math.abs(worker.x - worker.target.x) + Math.abs(worker.y - worker.target.y);
+                        
+                        if (distToResource === 0) {
+                            // Gather resource
+                            const resource = this.world.getResource(worker.x, worker.y);
+                            if (resource && resource.amount > 0) {
+                                const amount = Math.min(10, resource.amount);
+                                resource.amount -= amount;
+                                worker.carriedResource = {type: resource.type, amount: amount};
+                                worker.state = 'returning';
+                                
+                                if (resource.amount <= 0) {
+                                    this.world.removeResource(worker.x, worker.y);
+                                }
+                            }
+                        } else {
+                            // Move towards resource
+                            this.moveTowards(worker, worker.target.x, worker.target.y);
+                        }
+                        break;
+                        
+                    case 'returning':
+                        // Find nearest village/building
+                        let nearestBuilding = null;
+                        let nearestBuildingDist = Infinity;
+                        
+                        for (let building of faction.buildings) {
+                            const dist = Math.abs(worker.x - building.x) + Math.abs(worker.y - building.y);
+                            if (dist < nearestBuildingDist) {
+                                nearestBuildingDist = dist;
+                                nearestBuilding = building;
+                            }
+                        }
+                        
+                        if (nearestBuilding) {
+                            if (nearestBuildingDist <= 1) {
+                                // Deposit resources
+                                if (worker.carriedResource) {
+                                    if (worker.carriedResource.type === 'wood') {
+                                        faction.wood += worker.carriedResource.amount;
+                                    } else if (worker.carriedResource.type === 'stone') {
+                                        faction.stone += worker.carriedResource.amount;
+                                    }
+                                }
+                                worker.carriedResource = null;
+                                worker.state = 'idle';
+                            } else {
+                                this.moveTowards(worker, nearestBuilding.x, nearestBuilding.y);
+                            }
+                        }
+                        break;
+                }
+            }
+            
+            updateSoldier(soldier, faction) {
+                // Find enemies
+                let nearestEnemy = null;
+                let nearestDist = Infinity;
+                
+                for (let dx = -8; dx <= 8; dx++) {
+                    for (let dy = -8; dy <= 8; dy++) {
+                        const ex = soldier.x + dx;
+                        const ey = soldier.y + dy;
+                        const entity = this.world.getEntity(ex, ey);
+                        if (entity && entity.factionId !== undefined && entity.factionId !== faction.id && entity.factionId !== -1) {
+                            const dist = Math.abs(dx) + Math.abs(dy);
+                            if (dist < nearestDist) {
+                                nearestDist = dist;
+                                nearestEnemy = entity;
+                            }
+                        }
+                    }
+                }
+                
+                if (nearestEnemy) {
+                    if (nearestDist <= 1) {
+                        // Attack
+                        nearestEnemy.hp -= soldier.attack;
+                        this.createParticles(nearestEnemy.x, nearestEnemy.y, '#ff0000', 3);
+                        
+                        if (nearestEnemy.hp <= 0) {
+                            faction.kills++;
+                        }
+                    } else {
+                        // Chase
+                        this.moveTowards(soldier, nearestEnemy.x, nearestEnemy.y);
+                    }
+                } else if (soldier.state === 'attack' && soldier.target) {
+                    // Move to attack target location
+                    const dist = Math.abs(soldier.x - soldier.target.x) + Math.abs(soldier.y - soldier.target.y);
+                    if (dist > 1) {
+                        this.moveTowards(soldier, soldier.target.x, soldier.target.y);
+                    } else {
+                        soldier.state = 'patrol';
+                    }
+                } else {
+                    // Patrol
+                    if (this.rng.next() < 0.05) {
+                        const dx = this.rng.nextInt(-2, 2);
+                        const dy = this.rng.nextInt(-2, 2);
+                        const nx = soldier.x + dx;
+                        const ny = soldier.y + dy;
+                        if (this.world.isWalkable(nx, ny)) {
+                            soldier.x = nx;
+                            soldier.y = ny;
+                        }
+                    }
+                }
+            }
+            
+            updateMonster(monster) {
+                // Monsters attack everything
+                let nearestTarget = null;
+                let nearestDist = Infinity;
+                
+                for (let dx = -5; dx <= 5; dx++) {
+                    for (let dy = -5; dy <= 5; dy++) {
+                        const ex = monster.x + dx;
+                        const ey = monster.y + dy;
+                        const entity = this.world.getEntity(ex, ey);
+                        if (entity && entity.factionId !== undefined && entity.factionId !== -1) {
+                            const dist = Math.abs(dx) + Math.abs(dy);
+                            if (dist < nearestDist) {
+                                nearestDist = dist;
+                                nearestTarget = entity;
+                            }
+                        }
+                    }
+                }
+                
+                if (nearestTarget) {
+                    if (nearestDist <= 1) {
+                        nearestTarget.hp -= 15;
+                        this.createParticles(nearestTarget.x, nearestTarget.y, '#ff00ff', 5);
+                    } else {
+                        this.moveTowards(monster, nearestTarget.x, nearestTarget.y);
+                    }
+                } else {
+                    // Random wander
+                    if (this.rng.next() < 0.1) {
+                        const dx = this.rng.nextInt(-1, 1);
+                        const dy = this.rng.nextInt(-1, 1);
+                        const nx = monster.x + dx;
+                        const ny = monster.y + dy;
+                        if (this.world.isWalkable(nx, ny)) {
+                            monster.x = nx;
+                            monster.y = ny;
+                        }
+                    }
+                }
+            }
+            
+            moveTowards(entity, targetX, targetY) {
+                const dx = Math.sign(targetX - entity.x);
+                const dy = Math.sign(targetY - entity.y);
+                
+                const nx = entity.x + dx;
+                const ny = entity.y + dy;
+                
+                if (this.world.isWalkable(nx, ny)) {
+                    entity.x = nx;
+                    entity.y = ny;
+                } else if (this.world.isWalkable(entity.x + dx, entity.y)) {
+                    entity.x += dx;
+                } else if (this.world.isWalkable(entity.x, entity.y + dy)) {
+                    entity.y += dy;
+                }
+            }
+            
+            updateTerritory() {
+                // Reset territory
+                this.world.factionTerritory.fill(-1);
+                
+                // Claim territory around buildings and units
+                this.factions.forEach(faction => {
+                    [...faction.buildings, ...faction.units].forEach(entity => {
+                        for (let dy = -3; dy <= 3; dy++) {
+                            for (let dx = -3; dx <= 3; dx++) {
+                                const tx = entity.x + dx;
+                                const ty = entity.y + dy;
+                                if (Math.abs(dx) + Math.abs(dy) <= 3) {
+                                    const current = this.world.getTerritory(tx, ty);
+                                    if (current === -1) {
+                                        this.world.setTerritory(tx, ty, faction.id);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+            
+            selectGodPower(power) {
+                this.selectedPower = this.selectedPower === power ? null : power;
+                
+                document.querySelectorAll('.god-btn').forEach(btn => btn.classList.remove('active'));
+                
+                if (this.selectedPower) {
+                    document.getElementById('btn-' + power).classList.add('active');
+                    document.getElementById('activePower').textContent = this.getPowerName(power);
+                } else {
+                    document.getElementById('activePower').textContent = '-';
+                }
+            }
+            
+            getPowerName(power) {
+                const names = {
+                    bless: 'Segen (Regen)',
+                    resources: 'Ressourcen schenken',
+                    growth: 'Wachstum beschleunigen',
+                    heal: 'Heilen',
+                    lightning: 'Blitzschlag',
+                    fire: 'Feuer',
+                    monster: 'Monster beschwören',
+                    plague: 'Plage'
+                };
+                return names[power] || power;
+            }
+            
+            useGodPower(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const screenX = e.clientX - rect.left;
+                const screenY = e.clientY - rect.top;
+                
+                const worldX = Math.floor((screenX - this.canvas.width/2 - this.camera.x) / (this.camera.zoom * 16) + this.world.width/2);
+                const worldY = Math.floor((screenY - this.canvas.height/2 - this.camera.y) / (this.camera.zoom * 16) + this.world.height/2);
+                
+                if (worldX < 0 || worldX >= this.world.width || worldY < 0 || worldY >= this.world.height) return;
+                
+                switch (this.selectedPower) {
+                    case 'bless':
+                        this.factions.forEach(f => {
+                            f.wood += 20;
+                            f.stone += 10;
+                        });
+                        this.createParticles(worldX, worldY, '#4ecca3', 20);
+                        this.log('Göttlicher Segen! Alle Fraktionen erhalten Ressourcen', 'important');
+                        break;
+                        
+                    case 'resources':
+                        this.world.setResource(worldX, worldY, {type: 'wood', amount: 100});
+                        this.createParticles(worldX, worldY, '#8B4513', 10);
+                        this.log('Ressourcen erschaffen', 'normal');
+                        break;
+                        
+                    case 'growth':
+                        this.factions.forEach(f => {
+                            if (Math.abs(f.startX - worldX) < 10 && Math.abs(f.startY - worldY) < 10) {
+                                f.populationCap += 5;
+                                this.createParticles(f.startX, f.startY, '#ffd700', 15);
+                            }
+                        });
+                        this.log('Wachstum beschleunigt', 'normal');
+                        break;
+                        
+                    case 'heal':
+                        this.factions.forEach(f => {
+                            f.units.forEach(u => {
+                                if (Math.abs(u.x - worldX) < 5 && Math.abs(u.y - worldY) < 5) {
+                                    u.hp = u.maxHp;
+                                }
+                            });
+                        });
+                        this.createParticles(worldX, worldY, '#00ff00', 15);
+                        this.log('Heilung wirkt', 'normal');
+                        break;
+                        
+                    case 'lightning':
+                        const entity = this.world.getEntity(worldX, worldY);
+                        if (entity) {
+                            entity.hp -= 50;
+                            this.createParticles(worldX, worldY, '#ffff00', 10);
+                            this.log('Blitzschlag!', 'important');
+                        }
+                        break;
+                        
+                    case 'fire':
+                        for (let dy = -2; dy <= 2; dy++) {
+                            for (let dx = -2; dx <= 2; dx++) {
+                                const ex = worldX + dx;
+                                const ey = worldY + dy;
+                                const entity = this.world.getEntity(ex, ey);
+                                if (entity && entity.factionId !== undefined) {
+                                    entity.hp -= 20;
+                                }
+                            }
+                        }
+                        this.createParticles(worldX, worldY, '#ff4500', 20);
+                        this.log('Feuer wütet!', 'important');
+                        break;
+                        
+                    case 'monster':
+                        const monster = {
+                            type: ENTITY.MONSTER,
+                            x: worldX,
+                            y: worldY,
+                            factionId: -1,
+                            hp: 60,
+                            maxHp: 60,
+                            attack: 15
+                        };
+                        this.world.setEntity(worldX, worldY, monster);
+                        this.createParticles(worldX, worldY, '#ff00ff', 15);
+                        this.log('Monster erscheint!', 'important');
+                        break;
+                        
+                    case 'plague':
+                        this.factions.forEach(f => {
+                            f.units.forEach(u => {
+                                if (Math.abs(u.x - worldX) < 8 && Math.abs(u.y - worldY) < 8) {
+                                    u.hp -= 10;
+                                }
+                            });
+                        });
+                        this.createParticles(worldX, worldY, '#800080', 20);
+                        this.log('Plage breitet sich aus!', 'important');
+                        break;
+                }
+                
+                this.selectGodPower(null);
+            }
+            
+            createParticles(x, y, color, count) {
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: x + this.rng.next() - 0.5,
+                        y: y + this.rng.next() - 0.5,
+                        vx: (this.rng.next() - 0.5) * 0.3,
+                        vy: (this.rng.next() - 0.5) * 0.3,
+                        life: 30 + this.rng.nextInt(0, 20),
+                        color: color,
+                        size: 2 + this.rng.next() * 3
+                    });
+                }
+            }
+            
+            draw() {
+                // Clear
+                this.ctx.fillStyle = '#0a0a0f';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                if (!this.world) return;
+                
+                const tileSize = 16 * this.camera.zoom;
+                const offsetX = this.canvas.width/2 + this.camera.x - (this.world.width * tileSize)/2;
+                const offsetY = this.canvas.height/2 + this.camera.y - (this.world.height * tileSize)/2;
+                
+                // Draw territory
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const territory = this.world.getTerritory(x, y);
+                        if (territory !== -1) {
+                            const faction = this.factions[territory];
+                            if (faction) {
+                                this.ctx.fillStyle = faction.color + '15';
+                                this.ctx.fillRect(
+                                    offsetX + x * tileSize,
+                                    offsetY + y * tileSize,
+                                    tileSize,
+                                    tileSize
+                                );
+                            }
+                        }
+                    }
+                }
+                
+                // Draw terrain
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const terrain = this.world.getTerrain(x, y);
+                        let color;
+                        
+                        switch (terrain) {
+                            case TERRAIN.WATER: color = '#1e3a5f'; break;
+                            case TERRAIN.GRASS: color = '#2d5016'; break;
+                            case TERRAIN.FOREST: color = '#1a3d0a'; break;
+                            case TERRAIN.HILL: color = '#4a4a4a'; break;
+                            default: color = '#000';
+                        }
+                        
+                        this.ctx.fillStyle = color;
+                        this.ctx.fillRect(
+                            offsetX + x * tileSize,
+                            offsetY + y * tileSize,
+                            tileSize - 1,
+                            tileSize - 1
+                        );
+                    }
+                }
+                
+                // Draw resources
+                this.world.resources.forEach((resource, key) => {
+                    const [x, y] = key.split(',').map(Number);
+                    const rx = offsetX + x * tileSize + tileSize/2;
+                    const ry = offsetY + y * tileSize + tileSize/2;
+                    
+                    if (resource.type === 'wood') {
+                        this.ctx.fillStyle = '#8B4513';
+                        this.ctx.beginPath();
+                        this.ctx.arc(rx, ry, tileSize/3, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    } else if (resource.type === 'stone') {
+                        this.ctx.fillStyle = '#808080';
+                        this.ctx.fillRect(
+                            rx - tileSize/3,
+                            ry - tileSize/3,
+                            tileSize/1.5,
+                            tileSize/1.5
+                        );
+                    }
+                });
+                
+                // Draw entities
+                this.factions.forEach(faction => {
+                    // Draw buildings
+                    faction.buildings.forEach(building => {
+                        const bx = offsetX + building.x * tileSize;
+                        const by = offsetY + building.y * tileSize;
+                        
+                        if (building.type === ENTITY.VILLAGE) {
+                            this.ctx.fillStyle = faction.color;
+                            this.ctx.fillRect(bx + 2, by + 2, tileSize - 4, tileSize - 4);
+                            this.ctx.fillStyle = '#fff';
+                            this.ctx.font = `${tileSize/2}px Arial`;
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText('🏛️', bx + tileSize/2, by + tileSize/2 + 3);
+                        } else if (building.type === ENTITY.HOUSE) {
+                            this.ctx.fillStyle = faction.color;
+                            this.ctx.fillRect(bx + 4, by + 4, tileSize - 8, tileSize - 8);
+                            this.ctx.fillStyle = '#fff';
+                            this.ctx.font = `${tileSize/2}px Arial`;
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText('🏠', bx + tileSize/2, by + tileSize/2 + 3);
+                        } else if (building.type === ENTITY.BARRACKS) {
+                            this.ctx.fillStyle = faction.color;
+                            this.ctx.fillRect(bx + 3, by + 3, tileSize - 6, tileSize - 6);
+                            this.ctx.fillStyle = '#fff';
+                            this.ctx.font = `${tileSize/2}px Arial`;
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText('⚔️', bx + tileSize/2, by + tileSize/2 + 3);
+                        }
+                        
+                        // HP bar
+                        const hpPercent = building.hp / (building.type === ENTITY.VILLAGE ? 100 : building.type === ENTITY.BARRACKS ? 80 : 50);
+                        this.ctx.fillStyle = '#ff0000';
+                        this.ctx.fillRect(bx, by - 4, tileSize, 3);
+                        this.ctx.fillStyle = '#00ff00';
+                        this.ctx.fillRect(bx, by - 4, tileSize * hpPercent, 3);
+                    });
+                    
+                    // Draw units
+                    faction.units.forEach(unit => {
+                        const ux = offsetX + unit.x * tileSize;
+                        const uy = offsetY + unit.y * tileSize;
+                        
+                        if (unit.type === ENTITY.WORKER) {
+                            this.ctx.fillStyle = faction.color;
+                            this.ctx.beginPath();
+                            this.ctx.arc(ux + tileSize/2, uy + tileSize/2, tileSize/3, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            
+                            if (unit.carriedResource) {
+                                this.ctx.fillStyle = unit.carriedResource.type === 'wood' ? '#8B4513' : '#808080';
+                                this.ctx.fillRect(ux + tileSize/2 - 2, uy + tileSize/2 - 2, 4, 4);
+                            }
+                        } else if (unit.type === ENTITY.SOLDIER) {
+                            this.ctx.fillStyle = faction.color;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(ux + tileSize/2, uy + 4);
+                            this.ctx.lineTo(ux + tileSize - 4, uy + tileSize - 4);
+                            this.ctx.lineTo(ux + 4, uy + tileSize - 4);
+                            this.ctx.fill();
+                            
+                            // Sword
+                            this.ctx.strokeStyle = '#silver';
+                            this.ctx.lineWidth = 2;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(ux + tileSize/2, uy + tileSize/2);
+                            this.ctx.lineTo(ux + tileSize/2 + 4, uy + tileSize/2 - 4);
+                            this.ctx.stroke();
+                        }
+                        
+                        // HP bar
+                        const hpPercent = unit.hp / unit.maxHp;
+                        this.ctx.fillStyle = '#ff0000';
+                        this.ctx.fillRect(ux, uy - 4, tileSize, 2);
+                        this.ctx.fillStyle = '#00ff00';
+                        this.ctx.fillRect(ux, uy - 4, tileSize * hpPercent, 2);
+                    });
+                });
+                
+                // Draw particles
+                this.particles.forEach(p => {
+                    const px = offsetX + p.x * tileSize;
+                    const py = offsetY + p.y * tileSize;
+                    
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.globalAlpha = p.life / 30;
+                    this.ctx.beginPath();
+                    this.ctx.arc(px, py, p.size * this.camera.zoom, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.globalAlpha = 1;
+                });
+                
+                // Draw minimap
+                this.drawMinimap();
+            }
+            
+            drawMinimap() {
+                const mm = this.minimapCtx;
+                const scaleX = this.minimap.width / this.world.width;
+                const scaleY = this.minimap.height / this.world.height;
+                
+                mm.fillStyle = '#0a0a0f';
+                mm.fillRect(0, 0, this.minimap.width, this.minimap.height);
+                
+                // Terrain
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const terrain = this.world.getTerrain(x, y);
+                        if (terrain === TERRAIN.WATER) {
+                            mm.fillStyle = '#1e3a5f';
+                            mm.fillRect(x * scaleX, y * scaleY, scaleX, scaleY);
+                        }
+                    }
+                }
+                
+                // Factions
+                this.factions.forEach(faction => {
+                    mm.fillStyle = faction.color;
+                    faction.buildings.forEach(b => {
+                        mm.fillRect(b.x * scaleX, b.y * scaleY, scaleX * 2, scaleY * 2);
+                    });
+                    faction.units.forEach(u => {
+                        mm.fillRect(u.x * scaleX, u.y * scaleY, scaleX, scaleY);
+                    });
+                });
+            }
+            
+            updateTooltip(e) {
+                const tooltip = document.getElementById('tooltip');
+                const rect = this.canvas.getBoundingClientRect();
+                const screenX = e.clientX - rect.left;
+                const screenY = e.clientY - rect.top;
+                
+                const tileSize = 16 * this.camera.zoom;
+                const worldX = Math.floor((screenX - this.canvas.width/2 - this.camera.x) / tileSize + this.world.width/2);
+                const worldY = Math.floor((screenY - this.canvas.height/2 - this.camera.y) / tileSize + this.world.height/2);
+                
+                if (worldX >= 0 && worldX < this.world.width && worldY >= 0 && worldY < this.world.height) {
+                    const entity = this.world.getEntity(worldX, worldY);
+                    const resource = this.world.getResource(worldX, worldY);
+                    const terrain = this.world.getTerrain(worldX, worldY);
+                    
+                    let text = `Pos: ${worldX}, ${worldY}<br>`;
+                    
+                    const terrainNames = ['Wasser', 'Gras', 'Wald', 'Hügel'];
+                    text += `Terrain: ${terrainNames[terrain]}<br>`;
+                    
+                    if (resource) {
+                        text += `Ressource: ${resource.type} (${resource.amount})<br>`;
+                    }
+                    
+                    if (entity) {
+                        if (entity.factionId !== undefined) {
+                            const faction = this.factions[entity.factionId];
+                            if (faction) {
+                                text += `Fraktion: ${faction.name}<br>`;
+                            }
+                        }
+                        text += `Typ: ${entity.type}<br>`;
+                        text += `HP: ${entity.hp}/${entity.maxHp || '-'}`;
+                    }
+                    
+                    tooltip.innerHTML = text;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX + 10) + 'px';
+                    tooltip.style.top = (e.clientY + 10) + 'px';
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            }
+            
+            updateUI() {
+                document.getElementById('tickCount').textContent = this.tick;
+                
+                const factionsList = document.getElementById('factionsList');
+                factionsList.innerHTML = '';
+                
+                this.factions.forEach(faction => {
+                    const div = document.createElement('div');
+                    div.className = 'faction-info';
+                    div.style.borderLeftColor = faction.color;
+                    
+                    div.innerHTML = `
+                        <div class="faction-color" style="background: ${faction.color}"></div>
+                        <div class="faction-stats">
+                            <div style="font-weight: bold; color: ${faction.color}">${faction.name}</div>
+                            <div><span>👥</span> <span>${faction.population}/${faction.populationCap}</span></div>
+                            <div><span>⚔️</span> <span>${faction.soldiers}</span></div>
+                            <div><span>🪵</span> <span>${faction.wood}</span></div>
+                            <div><span>🪨</span> <span>${faction.stone}</span></div>
+                            <div><span>💀</span> <span>${faction.kills}/${faction.losses}</span></div>
+                        </div>
+                    `;
+                    
+                    factionsList.appendChild(div);
+                });
+            }
+            
+            log(message, type = 'normal') {
+                const log = document.getElementById('eventLog');
+                const entry = document.createElement('div');
+                entry.className = 'log-entry ' + (type === 'important' ? 'important' : '');
+                entry.textContent = `[${this.tick}] ${message}`;
+                log.insertBefore(entry, log.firstChild);
+                
+                while (log.children.length > 20) {
+                    log.removeChild(log.lastChild);
+                }
+            }
+            
+            togglePause() {
+                this.paused = !this.paused;
+                document.getElementById('pauseBtn').textContent = this.paused ? '▶️ Fortsetzen' : '⏸️ Pause';
+            }
+            
+            loop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        // Start game
+        const game = new GodSimulation();
+    </script>
+</body>
+</html>
