@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gott-Simulation: KI-vs-KI RTS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+        
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #header {
+            background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);
+            padding: 8px 12px;
+            border-bottom: 2px solid #0f3460;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 50px;
+        }
+        
+        h1 {
+            font-size: 1em;
+            color: #e94560;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+        
+        #headerControls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: #0f3460;
+            color: #fff;
+            border: 1px solid #e94560;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        button:hover {
+            background: #e94560;
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        button.active {
+            background: #e94560;
+            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+        
+        #modeToggle {
+            background: #2d5016;
+            border-color: #4ecca3;
+            font-weight: bold;
+        }
+        
+        #modeToggle.intervention {
+            background: #e94560;
+            border-color: #ff6b6b;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(233, 69, 96, 0.5); }
+            50% { box-shadow: 0 0 15px rgba(233, 69, 96, 0.8); }
+        }
+        
+        #seedInput {
+            background: #1a1a2e;
+            border: 1px solid #0f3460;
+            color: #fff;
+            padding: 4px 6px;
+            border-radius: 4px;
+            width: 70px;
+            font-family: monospace;
+            font-size: 0.8em;
+        }
+        
+        #mainContainer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #canvasContainer {
+            flex: 1;
+            position: relative;
+            background: #0a0a0f;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        /* Power Bar - immer sichtbar */
+        #powerBar {
+            background: linear-gradient(180deg, #16213e 0%, #1a1a2e 100%);
+            border-top: 2px solid #0f3460;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        #powerScrollContainer {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 4px;
+        }
+        
+        #powerScrollContainer::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .power-btn {
+            flex: 0 0 auto;
+            width: 70px;
+            height: 70px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 0.75em;
+            scroll-snap-align: start;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .power-btn .icon {
+            font-size: 1.8em;
+        }
+        
+        .power-btn.positive {
+            background: rgba(78, 204, 163, 0.1);
+            border: 2px solid #4ecca3;
+            color: #4ecca3;
+        }
+        
+        .power-btn.positive.active {
+            background: #4ecca3;
+            color: #000;
+            box-shadow: 0 0 15px rgba(78, 204, 163, 0.6);
+        }
+        
+        .power-btn.negative {
+            background: rgba(233, 69, 96, 0.1);
+            border: 2px solid #e94560;
+            color: #e94560;
+        }
+        
+        .power-btn.negative.active {
+            background: #e94560;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.6);
+        }
+        
+        .power-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .power-btn:active::after {
+            left: 100%;
+        }
+        
+        #powerIndicator {
+            text-align: center;
+            font-size: 0.85em;
+            color: #888;
+            min-height: 20px;
+        }
+        
+        #powerIndicator .active-name {
+            color: #e94560;
+            font-weight: bold;
+        }
+        
+        /* Stats Overlay */
+        #statsOverlay {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 10px;
+            max-width: 200px;
+            font-size: 0.75em;
+            max-height: 40vh;
+            overflow-y: auto;
+        }
+        
+        .faction-stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            border-left: 3px solid;
+        }
+        
+        .faction-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .mini-bar {
+            height: 3px;
+            background: #333;
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        
+        .mini-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+        
+        /* Tooltip */
+        #tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            border: 1px solid #e94560;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            max-width: 180px;
+        }
+        
+        /* Event Log */
+        #eventLog {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 180px;
+            max-height: 25vh;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 0.7em;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            opacity: 0.8;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-entry.important {
+            color: #e94560;
+            font-weight: bold;
+            opacity: 1;
+        }
+        
+        /* Minimap */
+        #minimapContainer {
+            position: absolute;
+            bottom: 90px;
+            right: 8px;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 6px;
+        }
+        
+        #minimap {
+            width: 120px;
+            height: 80px;
+            background: #0a0a0f;
+            border-radius: 4px;
+        }
+        
+        @media (max-width: 600px) {
+            h1 { font-size: 0.85em; }
+            #headerControls { gap: 4px; }
+            button { padding: 5px 8px; font-size: 0.75em; }
+            #statsOverlay { max-width: 150px; font-size: 0.7em; }
+            #eventLog { width: 140px; font-size: 0.65em; }
+            #minimap { width: 100px; height: 65px; }
+            .power-btn { width: 65px; height: 65px; font-size: 0.7em; }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🏛️ GOTT-SIM</h1>
+        <div id="headerControls">
+            <input type="text" id="seedInput" value="42" maxlength="8" placeholder="Seed">
+            <button onclick="game.generateWorld()" title="Neue Welt">🌍</button>
+            <button onclick="game.togglePause()" id="pauseBtn">⏸️</button>
+            <button onclick="cycleSpeed()" id="speedBtn">1x</button>
+            <button onclick="toggleMode()" id="modeToggle">👁️ Beobachten</button>
+            <button onclick="fitToWorld()" title="Zentrieren">⛶</button>
+        </div>
+    </div>
+    
+    <div id="mainContainer">
+        <div id="canvasContainer">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="statsOverlay">
+                <div style="color: #e94560; font-weight: bold; margin-bottom: 8px; font-size: 0.9em;">📊 Fraktionen</div>
+                <div id="factionsList"></div>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333; color: #888;">
+                    Tick: <span id="tickCount">0</span>
+                </div>
+            </div>
+            
+            <div id="eventLog"></div>
+            
+            <div id="minimapContainer">
+                <canvas id="minimap" width="120" height="80"></canvas>
+            </div>
+            
+            <div id="tooltip"></div>
+        </div>
+        
+        <div id="powerBar">
+            <div id="powerIndicator">
+                <span id="modeText">Beobachtungsmodus - Tippe auf Einheiten zum Infos anzeigen</span>
+                <span id="activePowerName" class="active-name" style="display: none;"></span>
+            </div>
+            <div id="powerScrollContainer">
+                <button class="power-btn positive" onclick="selectPower('bless')" id="btn-bless">
+                    <span class="icon">🌧️</span>
+                    <span>Segen</span>
+                </button>
+                <button class="power-btn positive" onclick="selectPower('heal')" id="btn-heal">
+                    <span class="icon">💚</span>
+                    <span>Heilen</span>
+                </button>
+                <button class="power-btn positive" onclick="selectPower('resources')" id="btn-resources">
+                    <span class="icon">📦</span>
+                    <span>Ressourcen</span>
+                </button>
+                <button class="power-btn positive" onclick="selectPower('growth')" id="btn-growth">
+                    <span class="icon">⚡</span>
+                    <span>Wachstum</span>
+                </button>
+                <button class="power-btn negative" onclick="selectPower('lightning')" id="btn-lightning">
+                    <span class="icon">⚡</span>
+                    <span>Blitz</span>
+                </button>
+                <button class="power-btn negative" onclick="selectPower('fire')" id="btn-fire">
+                    <span class="icon">🔥</span>
+                    <span>Feuer</span>
+                </button>
+                <button class="power-btn negative" onclick="selectPower('monster')" id="btn-monster">
+                    <span class="icon">👹</span>
+                    <span>Monster</span>
+                </button>
+                <button class="power-btn negative" onclick="selectPower('plague')" id="btn-plague">
+                    <span class="icon">☠️</span>
+                    <span>Plage</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Seeded Random
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = seed;
+            }
+            next() {
+                let t = this.seed += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+            nextInt(min, max) {
+                return Math.floor(this.next() * (max - min + 1)) + min;
+            }
+        }
+
+        // Terrain Types
+        const TERRAIN = { WATER: 0, GRASS: 1, FOREST: 2, HILL: 3 };
+        const ENTITY = { WORKER: 'worker', SOLDIER: 'soldier', VILLAGE: 'village', HOUSE: 'house', BARRACKS: 'barracks', MONSTER: 'monster' };
+
+        // World Grid
+        class WorldGrid {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+                this.terrain = new Uint8Array(width * height);
+                this.resources = new Map();
+                this.entities = new Map();
+                this.factionTerritory = new Int8Array(width * height).fill(-1);
+            }
+            getIndex(x, y) { return y * this.width + x; }
+            getTerrain(x, y) {
+                if (x < 0 || x >= this.width || y < 0 || y >= this.height) return TERRAIN.WATER;
+                return this.terrain[this.getIndex(x, y)];
+            }
+            setTerrain(x, y, type) {
+                if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                    this.terrain[this.getIndex(x, y)] = type;
+                }
+            }
+            isWalkable(x, y) {
+                return this.getTerrain(x, y) !== TERRAIN.WATER && !this.entities.has(`${x},${y}`);
+            }
+            getResource(x, y) { return this.resources.get(`${x},${y}`); }
+            setResource(x, y, res) { this.resources.set(`${x},${y}`, res); }
+            removeResource(x, y) { this.resources.delete(`${x},${y}`); }
+            getEntity(x, y) { return this.entities.get(`${x},${y}`); }
+            setEntity(x, y, entity) { this.entities.set(`${x},${y}`, entity); }
+            removeEntity(x, y) { this.entities.delete(`${x},${y}`); }
+            getTerritory(x, y) {
+                if (x < 0 || x >= this.width || y < 0 || y >= this.height) return -1;
+                return this.factionTerritory[this.getIndex(x, y)];
+            }
+            setTerritory(x, y, id) {
+                if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                    this.factionTerritory[this.getIndex(x, y)] = id;
+                }
+            }
+        }
+
+        // Faction AI
+        class Faction {
+            constructor(id, name, color, startX, startY) {
+                this.id = id;
+                this.name = name;
+                this.color = color;
+                this.startX = startX;
+                this.startY = startY;
+                this.wood = 50;
+                this.stone = 30;
+                this.population = 0;
+                this.populationCap = 10;
+                this.soldiers = 0;
+                this.workers = 0;
+                this.buildings = [];
+                this.units = [];
+                this.kills = 0;
+                this.losses = 0;
+                this.aiTimer = 0;
+            }
+            
+            updateAI(world, rng) {
+                this.aiTimer++;
+                if (this.aiTimer < 30) return;
+                this.aiTimer = 0;
+                
+                const soldierRatio = this.soldiers / (this.population + 1);
+                const hasEnemy = this.detectEnemies(world);
+                
+                if (this.population >= this.populationCap - 2 && this.wood >= 30) {
+                    this.buildHouse(world, rng);
+                } else if (this.wood >= 50 && this.stone >= 20 && !this.hasBuilding(ENTITY.BARRACKS)) {
+                    this.buildBarracks(world, rng);
+                } else if (this.hasBuilding(ENTITY.BARRACKS) && this.wood >= 20 && soldierRatio < 0.4) {
+                    this.recruitSoldier(world, rng);
+                } else if (this.wood >= 10 && this.workers < 5 && this.population < this.populationCap) {
+                    this.recruitWorker(world, rng);
+                } else if (this.soldiers >= 5 && hasEnemy && rng.next() < 0.3) {
+                    this.launchAttack(world, rng);
+                }
+            }
+            
+            detectEnemies(world) {
+                for (let unit of this.units) {
+                    for (let dx = -8; dx <= 8; dx++) {
+                        for (let dy = -8; dy <= 8; dy++) {
+                            const entity = world.getEntity(unit.x + dx, unit.y + dy);
+                            if (entity && entity.factionId !== undefined && entity.factionId !== this.id) return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            hasBuilding(type) { return this.buildings.some(b => b.type === type); }
+            
+            findBuildSpot(world, rng) {
+                for (let i = 0; i < 20; i++) {
+                    const angle = rng.next() * Math.PI * 2;
+                    const dist = 2 + rng.next() * 5;
+                    const x = Math.floor(this.startX + Math.cos(angle) * dist);
+                    const y = Math.floor(this.startY + Math.sin(angle) * dist);
+                    if (world.isWalkable(x, y) && !world.getEntity(x, y)) return {x, y};
+                }
+                return null;
+            }
+            
+            findSpawnSpot(world, rng) {
+                if (this.buildings.length === 0) return {x: this.startX, y: this.startY};
+                const building = this.buildings[rng.nextInt(0, this.buildings.length - 1)];
+                for (let i = 0; i < 10; i++) {
+                    const x = building.x + rng.nextInt(-2, 2);
+                    const y = building.y + rng.nextInt(-2, 2);
+                    if (world.isWalkable(x, y) && !world.getEntity(x, y)) return {x, y};
+                }
+                return null;
+            }
+            
+            buildHouse(world, rng) {
+                const spot = this.findBuildSpot(world, rng);
+                if (spot) {
+                    const house = { type: ENTITY.HOUSE, x: spot.x, y: spot.y, factionId: this.id, hp: 50, maxHp: 50 };
+                    world.setEntity(spot.x, spot.y, house);
+                    this.buildings.push(house);
+                    this.wood -= 30;
+                    this.populationCap += 5;
+                    game.log(`${this.name} baut Haus`);
+                }
+            }
+            
+            buildBarracks(world, rng) {
+                const spot = this.findBuildSpot(world, rng);
+                if (spot) {
+                    const barracks = { type: ENTITY.BARRACKS, x: spot.x, y: spot.y, factionId: this.id, hp: 80, maxHp: 80 };
+                    world.setEntity(spot.x, spot.y, barracks);
+                    this.buildings.push(barracks);
+                    this.wood -= 50;
+                    this.stone -= 20;
+                    game.log(`${this.name} errichtet Kaserne`, true);
+                }
+            }
+            
+            recruitWorker(world, rng) {
+                const spot = this.findSpawnSpot(world, rng);
+                if (spot && this.population < this.populationCap) {
+                    const worker = {
+                        type: ENTITY.WORKER, x: spot.x, y: spot.y, factionId: this.id,
+                        hp: 20, maxHp: 20, state: 'idle', target: null,
+                        carriedResource: null, gatherCooldown: 0, moveCooldown: 0
+                    };
+                    world.setEntity(spot.x, spot.y, worker);
+                    this.units.push(worker);
+                    this.population++;
+                    this.workers++;
+                    this.wood -= 10;
+                }
+            }
+            
+            recruitSoldier(world, rng) {
+                const spot = this.findSpawnSpot(world, rng);
+                if (spot && this.population < this.populationCap && this.hasBuilding(ENTITY.BARRACKS)) {
+                    const soldier = {
+                        type: ENTITY.SOLDIER, x: spot.x, y: spot.y, factionId: this.id,
+                        hp: 40, maxHp: 40, attack: 10, state: 'patrol', target: null, moveCooldown: 0
+                    };
+                    world.setEntity(spot.x, spot.y, soldier);
+                    this.units.push(soldier);
+                    this.population++;
+                    this.soldiers++;
+                    this.wood -= 20;
+                }
+            }
+            
+            launchAttack(world, rng) {
+                let target = null;
+                for (let unit of this.units) {
+                    for (let dx = -10; dx <= 10 && !target; dx++) {
+                        for (let dy = -10; dy <= 10 && !target; dy++) {
+                            const entity = world.getEntity(unit.x + dx, unit.y + dy);
+                            if (entity && entity.factionId !== undefined && entity.factionId !== this.id) {
+                                target = {x: unit.x + dx, y: unit.y + dy};
+                            }
+                        }
+                    }
+                }
+                if (target) {
+                    this.units.forEach(u => {
+                        if (u.type === ENTITY.SOLDIER) {
+                            u.state = 'attack';
+                            u.target = {...target};
+                        }
+                    });
+                    game.log(`${this.name} greift an!`, true);
+                }
+            }
+        }
+
+        // Monster Class - separate von Factions
+        class Monster {
+            constructor(x, y) {
+                this.type = ENTITY.MONSTER;
+                this.x = x;
+                this.y = y;
+                this.factionId = -1; // Neutral/enemy to all
+                this.hp = 80;
+                this.maxHp = 80;
+                this.attack = 15;
+                this.despawnTimer = 600; // 20 seconds at 30fps
+                this.state = 'wander';
+                this.target = null;
+                this.moveCooldown = 0;
+                this.pulsePhase = 0;
+            }
+            
+            update(world, factions, rng) {
+                this.despawnTimer--;
+                this.pulsePhase += 0.1;
+                
+                // Find nearest target from any faction
+                let nearest = null;
+                let nearestDist = Infinity;
+                
+                for (let faction of factions) {
+                    for (let unit of faction.units) {
+                        const dist = Math.abs(unit.x - this.x) + Math.abs(unit.y - this.y);
+                        if (dist < nearestDist && dist < 10) {
+                            nearestDist = dist;
+                            nearest = unit;
+                        }
+                    }
+                    for (let building of faction.buildings) {
+                        const dist = Math.abs(building.x - this.x) + Math.abs(building.y - this.y);
+                        if (dist < nearestDist && dist < 10) {
+                            nearestDist = dist;
+                            nearest = building;
+                        }
+                    }
+                }
+                
+                // Clear old position
+                const current = world.getEntity(this.x, this.y);
+                if (current === this) world.removeEntity(this.x, this.y);
+                
+                if (nearest) {
+                    this.state = 'chase';
+                    this.target = nearest;
+                    
+                    if (nearestDist <= 1) {
+                        // Attack
+                        nearest.hp -= this.attack;
+                        game.createParticles(nearest.x, nearest.y, '#ff00ff', 3);
+                        if (nearest.hp <= 0) {
+                            game.createParticles(nearest.x, nearest.y, '#ff0000', 10);
+                        }
+                    } else {
+                        // Chase
+                        if (this.moveCooldown <= 0) {
+                            this.moveTowards(world, nearest.x, nearest.y);
+                            this.moveCooldown = 2; // Slower than units
+                        } else {
+                            this.moveCooldown--;
+                        }
+                    }
+                } else {
+                    // Wander randomly
+                    this.state = 'wander';
+                    if (rng.next() < 0.1 && this.moveCooldown <= 0) {
+                        const dx = rng.nextInt(-1, 1);
+                        const dy = rng.nextInt(-1, 1);
+                        const nx = this.x + dx;
+                        const ny = this.y + dy;
+                        if (world.isWalkable(nx, ny)) {
+                            this.x = nx;
+                            this.y = ny;
+                        }
+                        this.moveCooldown = 3;
+                    } else {
+                        this.moveCooldown--;
+                    }
+                }
+                
+                // Set new position
+                world.setEntity(this.x, this.y, this);
+                
+                return this.despawnTimer > 0 && this.hp > 0;
+            }
+            
+            moveTowards(world, tx, ty) {
+                const dx = Math.sign(tx - this.x);
+                const dy = Math.sign(ty - this.y);
+                const nx = this.x + dx;
+                const ny = this.y + dy;
+                
+                if (world.isWalkable(nx, ny)) {
+                    this.x = nx;
+                    this.y = ny;
+                } else if (world.isWalkable(this.x + dx, this.y)) {
+                    this.x += dx;
+                } else if (world.isWalkable(this.x, this.y + dy)) {
+                    this.y += dy;
+                }
+            }
+        }
+
+        // Main Game
+        class GodSimulation {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.minimap = document.getElementById('minimap');
+                this.minimapCtx = this.minimap.getContext('2d');
+                
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                
+                this.seed = 42;
+                this.rng = new SeededRandom(this.seed);
+                this.world = null;
+                this.factions = [];
+                this.monsters = []; // Separate monster array
+                this.tick = 0;
+                this.paused = false;
+                this.speed = 1;
+                
+                this.camera = {x: 0, y: 0, zoom: 1};
+                this.interventionMode = false; // false = observe, true = cast powers
+                this.selectedPower = null;
+                this.particles = [];
+                
+                this.setupInput();
+                this.generateWorld();
+                this.loop();
+            }
+            
+            resize() {
+                const container = document.getElementById('canvasContainer');
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                this.canvas.width = w;
+                this.canvas.height = h;
+            }
+            
+            setupInput() {
+                let isDragging = false;
+                let lastX, lastY;
+                
+                const getWorldPos = (clientX, clientY) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const screenX = clientX - rect.left;
+                    const screenY = clientY - rect.top;
+                    const tileSize = 16 * this.camera.zoom;
+                    const x = Math.floor((screenX - this.canvas.width/2 - this.camera.x) / tileSize + this.world.width/2);
+                    const y = Math.floor((screenY - this.canvas.height/2 - this.camera.y) / tileSize + this.world.height/2);
+                    return {x, y, screenX, screenY};
+                };
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0) return; // Only left click
+                    
+                    const pos = getWorldPos(e.clientX, e.clientY);
+                    
+                    if (this.interventionMode && this.selectedPower) {
+                        this.castPower(pos.x, pos.y);
+                    } else {
+                        isDragging = true;
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+                    }
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (isDragging && !this.interventionMode) {
+                        this.camera.x += (e.clientX - lastX) / this.camera.zoom;
+                        this.camera.y += (e.clientY - lastY) / this.camera.zoom;
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+                    }
+                    this.updateTooltip(e);
+                });
+                
+                this.canvas.addEventListener('mouseup', () => isDragging = false);
+                this.canvas.addEventListener('mouseleave', () => isDragging = false);
+                
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+                    this.camera.zoom = Math.max(0.3, Math.min(3, this.camera.zoom * factor));
+                });
+                
+                // Touch support
+                let touchMode = null;
+                let lastTouch = null;
+                let pinchDist = 0;
+                let pinchZoom = 1;
+                
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    if (e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        const pos = getWorldPos(touch.clientX, touch.clientY);
+                        
+                        if (this.interventionMode && this.selectedPower) {
+                            this.castPower(pos.x, pos.y);
+                        } else {
+                            touchMode = 'pan';
+                            lastTouch = touch;
+                        }
+                    } else if (e.touches.length === 2) {
+                        touchMode = 'pinch';
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        pinchDist = Math.sqrt(dx*dx + dy*dy);
+                        pinchZoom = this.camera.zoom;
+                    }
+                }, {passive: false});
+                
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    if (touchMode === 'pan' && e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        this.camera.x += (touch.clientX - lastTouch.clientX) / this.camera.zoom;
+                        this.camera.y += (touch.clientY - lastTouch.clientY) / this.camera.zoom;
+                        lastTouch = touch;
+                    } else if (touchMode === 'pinch' && e.touches.length === 2) {
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (pinchDist > 0) {
+                            this.camera.zoom = Math.max(0.3, Math.min(3, pinchZoom * (dist / pinchDist)));
+                        }
+                    }
+                }, {passive: false});
+                
+                this.canvas.addEventListener('touchend', () => {
+                    touchMode = null;
+                    lastTouch = null;
+                });
+            }
+            
+            generateWorld() {
+                const seedInput = document.getElementById('seedInput').value;
+                this.seed = parseInt(seedInput) || Math.floor(Math.random() * 100000);
+                document.getElementById('seedInput').value = this.seed;
+                this.rng = new SeededRandom(this.seed);
+                
+                this.world = new WorldGrid(60, 45); // Smaller for mobile
+                this.factions = [];
+                this.monsters = [];
+                this.tick = 0;
+                this.particles = [];
+                
+                this.generateTerrain();
+                this.placeResources();
+                
+                const colors = ['#e94560', '#4ecca3', '#f9d423', '#a8e6cf'];
+                const names = ['Crimson', 'Viridian', 'Golden', 'Azure'];
+                
+                for (let i = 0; i < 3; i++) {
+                    let x, y, attempts = 0;
+                    do {
+                        x = this.rng.nextInt(8, this.world.width - 8);
+                        y = this.rng.nextInt(8, this.world.height - 8);
+                        attempts++;
+                    } while (!this.isValidStart(x, y) && attempts < 50);
+                    
+                    if (attempts < 50) {
+                        const faction = new Faction(i, names[i], colors[i], x, y);
+                        this.factions.push(faction);
+                        
+                        const village = { type: ENTITY.VILLAGE, x, y, factionId: i, hp: 100, maxHp: 100 };
+                        this.world.setEntity(x, y, village);
+                        faction.buildings.push(village);
+                        
+                        for (let j = 0; j < 3; j++) {
+                            const spot = faction.findSpawnSpot(this.world, this.rng);
+                            if (spot) {
+                                const worker = {
+                                    type: ENTITY.WORKER, x: spot.x, y: spot.y, factionId: i,
+                                    hp: 20, maxHp: 20, state: 'idle', target: null,
+                                    carriedResource: null, gatherCooldown: 0, moveCooldown: 0
+                                };
+                                this.world.setEntity(spot.x, spot.y, worker);
+                                faction.units.push(worker);
+                                faction.population++;
+                                faction.workers++;
+                            }
+                        }
+                    }
+                }
+                
+                this.log(`Welt ${this.seed} generiert`, true);
+                this.updateUI();
+            }
+            
+            generateTerrain() {
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const n = this.rng.next();
+                        if (n < 0.12) this.world.setTerrain(x, y, TERRAIN.WATER);
+                        else if (n < 0.4) this.world.setTerrain(x, y, TERRAIN.FOREST);
+                        else if (n < 0.55) this.world.setTerrain(x, y, TERRAIN.HILL);
+                        else this.world.setTerrain(x, y, TERRAIN.GRASS);
+                    }
+                }
+                // Smooth
+                for (let i = 0; i < 2; i++) {
+                    const newTerr = new Uint8Array(this.world.width * this.world.height);
+                    for (let y = 1; y < this.world.height - 1; y++) {
+                        for (let x = 1; x < this.world.width - 1; x++) {
+                            const counts = {};
+                            for (let dy = -1; dy <= 1; dy++) {
+                                for (let dx = -1; dx <= 1; dx++) {
+                                    const t = this.world.getTerrain(x+dx, y+dy);
+                                    counts[t] = (counts[t] || 0) + 1;
+                                }
+                            }
+                            let max = 0, type = TERRAIN.GRASS;
+                            for (let [t, c] of Object.entries(counts)) {
+                                if (c > max) { max = c; type = parseInt(t); }
+                            }
+                            newTerr[y * this.world.width + x] = type;
+                        }
+                    }
+                    this.world.terrain = newTerr;
+                }
+            }
+            
+            placeResources() {
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const t = this.world.getTerrain(x, y);
+                        if (t === TERRAIN.FOREST && this.rng.next() < 0.6) {
+                            this.world.setResource(x, y, {type: 'wood', amount: 40});
+                        } else if (t === TERRAIN.HILL && this.rng.next() < 0.3) {
+                            this.world.setResource(x, y, {type: 'stone', amount: 25});
+                        }
+                    }
+                }
+            }
+            
+            isValidStart(x, y) {
+                if (this.world.getTerrain(x, y) === TERRAIN.WATER) return false;
+                for (let f of this.factions) {
+                    if (Math.abs(x - f.startX) + Math.abs(y - f.startY) < 12) return false;
+                }
+                return true;
+            }
+            
+            update() {
+                if (this.paused) return;
+                
+                for (let s = 0; s < this.speed; s++) {
+                    this.tick++;
+                    
+                    // Update factions
+                    this.factions.forEach(f => {
+                        f.updateAI(this.world, this.rng);
+                        this.updateFactionUnits(f);
+                    });
+                    
+                    // Update monsters - THIS IS THE FIX
+                    this.monsters = this.monsters.filter(m => {
+                        const alive = m.update(this.world, this.factions, this.rng);
+                        if (!alive) {
+                            this.world.removeEntity(m.x, m.y);
+                            this.createParticles(m.x, m.y, '#ff00ff', 15);
+                        }
+                        return alive;
+                    });
+                    
+                    // Update particles
+                    this.particles = this.particles.filter(p => {
+                        p.life--;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        return p.life > 0;
+                    });
+                    
+                    // Territory
+                    this.updateTerritory();
+                }
+                
+                if (this.tick % 10 === 0) this.updateUI();
+            }
+            
+            updateFactionUnits(faction) {
+                faction.units = faction.units.filter(unit => {
+                    if (unit.hp <= 0) {
+                        this.world.removeEntity(unit.x, unit.y);
+                        faction.losses++;
+                        return false;
+                    }
+                    this.updateUnit(unit, faction);
+                    return true;
+                });
+                
+                faction.buildings = faction.buildings.filter(b => {
+                    if (b.hp <= 0) {
+                        this.world.removeEntity(b.x, b.y);
+                        if (b.type === ENTITY.HOUSE) faction.populationCap -= 5;
+                        return false;
+                    }
+                    return true;
+                });
+                
+                faction.population = faction.units.length;
+                faction.soldiers = faction.units.filter(u => u.type === ENTITY.SOLDIER).length;
+                faction.workers = faction.units.filter(u => u.type === ENTITY.WORKER).length;
+            }
+            
+            updateUnit(unit, faction) {
+                const current = this.world.getEntity(unit.x, unit.y);
+                if (current === unit) this.world.removeEntity(unit.x, unit.y);
+                
+                if (unit.type === ENTITY.WORKER) this.updateWorker(unit, faction);
+                else if (unit.type === ENTITY.SOLDIER) this.updateSoldier(unit, faction);
+                
+                this.world.setEntity(unit.x, unit.y, unit);
+            }
+            
+            updateWorker(worker, faction) {
+                switch(worker.state) {
+                    case 'idle':
+                        let nearest = null, nearestDist = Infinity;
+                        for (let dx = -8; dx <= 8; dx++) {
+                            for (let dy = -8; dy <= 8; dy++) {
+                                const res = this.world.getResource(worker.x+dx, worker.y+dy);
+                                if (res && res.amount > 0) {
+                                    const dist = Math.abs(dx) + Math.abs(dy);
+                                    if (dist < nearestDist) {
+                                        nearestDist = dist;
+                                        nearest = {x: worker.x+dx, y: worker.y+dy, ...res};
+                                    }
+                                }
+                            }
+                        }
+                        if (nearest) {
+                            worker.state = 'gathering';
+                            worker.target = nearest;
+                        } else if (this.rng.next() < 0.1) {
+                            const nx = worker.x + this.rng.nextInt(-1, 1);
+                            const ny = worker.y + this.rng.nextInt(-1, 1);
+                            if (this.world.isWalkable(nx, ny)) {
+                                worker.x = nx; worker.y = ny;
+                            }
+                        }
+                        break;
+                        
+                    case 'gathering':
+                        if (!worker.target || !this.world.getResource(worker.target.x, worker.target.y)?.amount) {
+                            worker.state = 'idle';
+                            worker.target = null;
+                            break;
+                        }
+                        const dist = Math.abs(worker.x - worker.target.x) + Math.abs(worker.y - worker.target.y);
+                        if (dist === 0) {
+                            const res = this.world.getResource(worker.x, worker.y);
+                            if (res) {
+                                const amt = Math.min(10, res.amount);
+                                res.amount -= amt;
+                                worker.carriedResource = {type: res.type, amount: amt};
+                                worker.state = 'returning';
+                                if (res.amount <= 0) this.world.removeResource(worker.x, worker.y);
+                            }
+                        } else {
+                            this.moveTowards(worker, worker.target.x, worker.target.y);
+                        }
+                        break;
+                        
+                    case 'returning':
+                        let nearestB = null, nearestBDist = Infinity;
+                        for (let b of faction.buildings) {
+                            const d = Math.abs(worker.x - b.x) + Math.abs(worker.y - b.y);
+                            if (d < nearestBDist) { nearestBDist = d; nearestB = b; }
+                        }
+                        if (nearestB) {
+                            if (nearestBDist <= 1) {
+                                if (worker.carriedResource?.type === 'wood') faction.wood += worker.carriedResource.amount;
+                                else if (worker.carriedResource?.type === 'stone') faction.stone += worker.carriedResource.amount;
+                                worker.carriedResource = null;
+                                worker.state = 'idle';
+                            } else {
+                                if (worker.moveCooldown <= 0) {
+                                    this.moveTowards(worker, nearestB.x, nearestB.y);
+                                    worker.moveCooldown = 1;
+                                } else worker.moveCooldown--;
+                            }
+                        }
+                        break;
+                }
+            }
+            
+            updateSoldier(soldier, faction) {
+                let nearest = null, nearestDist = Infinity;
+                for (let dx = -6; dx <= 6; dx++) {
+                    for (let dy = -6; dy <= 6; dy++) {
+                        const e = this.world.getEntity(soldier.x+dx, soldier.y+dy);
+                        if (e && e.factionId !== undefined && e.factionId !== faction.id && e.factionId !== -1) {
+                            const d = Math.abs(dx) + Math.abs(dy);
+                            if (d < nearestDist) { nearestDist = d; nearest = e; }
+                        }
+                    }
+                }
+                
+                if (nearest) {
+                    if (nearestDist <= 1) {
+                        nearest.hp -= soldier.attack;
+                        this.createParticles(nearest.x, nearest.y, '#ff0000', 3);
+                        if (nearest.hp <= 0) faction.kills++;
+                    } else {
+                        if (soldier.moveCooldown <= 0) {
+                            this.moveTowards(soldier, nearest.x, nearest.y);
+                            soldier.moveCooldown = 1;
+                        } else soldier.moveCooldown--;
+                    }
+                } else if (soldier.state === 'attack' && soldier.target) {
+                    const d = Math.abs(soldier.x - soldier.target.x) + Math.abs(soldier.y - soldier.target.y);
+                    if (d > 1) {
+                        if (soldier.moveCooldown <= 0) {
+                            this.moveTowards(soldier, soldier.target.x, soldier.target.y);
+                            soldier.moveCooldown = 1;
+                        } else soldier.moveCooldown--;
+                    } else soldier.state = 'patrol';
+                } else if (this.rng.next() < 0.05) {
+                    const nx = soldier.x + this.rng.nextInt(-2, 2);
+                    const ny = soldier.y + this.rng.nextInt(-2, 2);
+                    if (soldier.moveCooldown <= 0) {
+                        if (this.world.isWalkable(nx, ny)) { soldier.x = nx; soldier.y = ny; }
+                        soldier.moveCooldown = 2;
+                    } else soldier.moveCooldown--;
+                }
+            }
+            
+            moveTowards(entity, tx, ty) {
+                const dx = Math.sign(tx - entity.x);
+                const dy = Math.sign(ty - entity.y);
+                const nx = entity.x + dx;
+                const ny = entity.y + dy;
+                
+                if (this.world.isWalkable(nx, ny)) {
+                    entity.x = nx; entity.y = ny;
+                } else if (this.world.isWalkable(entity.x + dx, entity.y)) {
+                    entity.x += dx;
+                } else if (this.world.isWalkable(entity.x, entity.y + dy)) {
+                    entity.y += dy;
+                }
+            }
+            
+            updateTerritory() {
+                this.world.factionTerritory.fill(-1);
+                this.factions.forEach(f => {
+                    [...f.buildings, ...f.units].forEach(e => {
+                        for (let dy = -2; dy <= 2; dy++) {
+                            for (let dx = -2; dx <= 2; dx++) {
+                                if (Math.abs(dx) + Math.abs(dy) <= 2) {
+                                    this.world.setTerritory(e.x+dx, e.y+dy, f.id);
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+            
+            castPower(x, y) {
+                if (x < 0 || x >= this.world.width || y < 0 || y >= this.world.height) return;
+                
+                switch(this.selectedPower) {
+                    case 'bless':
+                        this.factions.forEach(f => {
+                            f.wood += 30;
+                            f.stone += 15;
+                        });
+                        this.createParticles(x, y, '#4ecca3', 20);
+                        this.log('🌧️ Göttlicher Segen!', true);
+                        break;
+                        
+                    case 'heal':
+                        let healed = 0;
+                        this.factions.forEach(f => {
+                            f.units.forEach(u => {
+                                if (Math.abs(u.x - x) < 4 && Math.abs(u.y - y) < 4) {
+                                    u.hp = u.maxHp;
+                                    healed++;
+                                }
+                            });
+                        });
+                        this.createParticles(x, y, '#00ff00', 15);
+                        this.log(`💚 ${healed} Einheiten geheilt`);
+                        break;
+                        
+                    case 'resources':
+                        this.world.setResource(x, y, {type: 'wood', amount: 80});
+                        this.createParticles(x, y, '#8B4513', 10);
+                        this.log('📦 Ressourcen erschaffen');
+                        break;
+                        
+                    case 'growth':
+                        this.factions.forEach(f => {
+                            if (Math.abs(f.startX - x) < 8 && Math.abs(f.startY - y) < 8) {
+                                f.populationCap += 5;
+                                this.createParticles(f.startX, f.startY, '#ffd700', 15);
+                            }
+                        });
+                        this.log('⚡ Wachstum beschleunigt');
+                        break;
+                        
+                    case 'lightning':
+                        const entity = this.world.getEntity(x, y);
+                        if (entity) {
+                            entity.hp -= 50;
+                            this.createParticles(x, y, '#ffff00', 15);
+                            this.log('⚡ Blitzschlag!', true);
+                        } else {
+                            this.createParticles(x, y, '#ffff00', 8);
+                        }
+                        break;
+                        
+                    case 'fire':
+                        for (let dy = -2; dy <= 2; dy++) {
+                            for (let dx = -2; dx <= 2; dx++) {
+                                const e = this.world.getEntity(x+dx, y+dy);
+                                if (e && e.factionId !== undefined) e.hp -= 25;
+                            }
+                        }
+                        this.createParticles(x, y, '#ff4500', 25);
+                        this.log('🔥 Feuer wütet!', true);
+                        break;
+                        
+                    case 'monster':
+                        // THE FIX: Proper monster spawning
+                        const monster = new Monster(x, y);
+                        this.monsters.push(monster);
+                        this.world.setEntity(x, y, monster);
+                        this.createParticles(x, y, '#ff00ff', 20);
+                        this.log('👹 Monster erscheint!', true);
+                        break;
+                        
+                    case 'plague':
+                        let infected = 0;
+                        this.factions.forEach(f => {
+                            f.units.forEach(u => {
+                                if (Math.abs(u.x - x) < 6 && Math.abs(u.y - y) < 6) {
+                                    u.hp -= 15;
+                                    infected++;
+                                }
+                            });
+                        });
+                        this.createParticles(x, y, '#800080', 20);
+                        this.log(`☠️ Plage: ${infected} infiziert`, true);
+                        break;
+                }
+            }
+            
+            createParticles(x, y, color, count) {
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: x + this.rng.next() - 0.5,
+                        y: y + this.rng.next() - 0.5,
+                        vx: (this.rng.next() - 0.5) * 0.4,
+                        vy: (this.rng.next() - 0.5) * 0.4,
+                        life: 25 + this.rng.nextInt(0, 15),
+                        color: color,
+                        size: 2 + this.rng.next() * 4
+                    });
+                }
+            }
+            
+            draw() {
+                this.ctx.fillStyle = '#0a0a0f';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                if (!this.world) return;
+                
+                const tileSize = 16 * this.camera.zoom;
+                const offsetX = this.canvas.width/2 + this.camera.x - (this.world.width * tileSize)/2;
+                const offsetY = this.canvas.height/2 + this.camera.y - (this.world.height * tileSize)/2;
+                
+                // Territory
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const t = this.world.getTerritory(x, y);
+                        if (t !== -1) {
+                            const f = this.factions[t];
+                            if (f) {
+                                this.ctx.fillStyle = f.color + '12';
+                                this.ctx.fillRect(offsetX + x*tileSize, offsetY + y*tileSize, tileSize, tileSize);
+                            }
+                        }
+                    }
+                }
+                
+                // Terrain
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        const t = this.world.getTerrain(x, y);
+                        let color;
+                        switch(t) {
+                            case TERRAIN.WATER: color = '#1e3a5f'; break;
+                            case TERRAIN.GRASS: color = '#2d5016'; break;
+                            case TERRAIN.FOREST: color = '#1a3d0a'; break;
+                            case TERRAIN.HILL: color = '#4a4a4a'; break;
+                            default: color = '#000';
+                        }
+                        this.ctx.fillStyle = color;
+                        this.ctx.fillRect(offsetX + x*tileSize, offsetY + y*tileSize, tileSize-1, tileSize-1);
+                    }
+                }
+                
+                // Resources
+                this.world.resources.forEach((res, key) => {
+                    const [x, y] = key.split(',').map(Number);
+                    const rx = offsetX + x*tileSize + tileSize/2;
+                    const ry = offsetY + y*tileSize + tileSize/2;
+                    if (res.type === 'wood') {
+                        this.ctx.fillStyle = '#8B4513';
+                        this.ctx.beginPath();
+                        this.ctx.arc(rx, ry, tileSize/3, 0, Math.PI*2);
+                        this.ctx.fill();
+                    } else {
+                        this.ctx.fillStyle = '#808080';
+                        this.ctx.fillRect(rx-tileSize/3, ry-tileSize/3, tileSize/1.5, tileSize/1.5);
+                    }
+                });
+                
+                // Buildings & Units
+                this.factions.forEach(f => {
+                    // Buildings
+                    f.buildings.forEach(b => {
+                        const bx = offsetX + b.x*tileSize;
+                        const by = offsetY + b.y*tileSize;
+                        
+                        this.ctx.fillStyle = f.color;
+                        if (b.type === ENTITY.VILLAGE) {
+                            this.ctx.fillRect(bx+2, by+2, tileSize-4, tileSize-4);
+                            this.ctx.fillStyle = '#fff';
+                            this.ctx.font = `${tileSize*0.6}px Arial`;
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText('🏛️', bx+tileSize/2, by+tileSize/2+2);
+                        } else if (b.type === ENTITY.HOUSE) {
+                            this.ctx.fillRect(bx+4, by+4, tileSize-8, tileSize-8);
+                            this.ctx.fillStyle = '#fff';
+                            this.ctx.font = `${tileSize*0.5}px Arial`;
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText('🏠', bx+tileSize/2, by+tileSize/2+2);
+                        } else if (b.type === ENTITY.BARRACKS) {
+                            this.ctx.fillRect(bx+3, by+3, tileSize-6, tileSize-6);
+                            this.ctx.fillStyle = '#fff';
+                            this.ctx.font = `${tileSize*0.5}px Arial`;
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText('⚔️', bx+tileSize/2, by+tileSize/2+2);
+                        }
+                        
+                        // HP bar
+                        const hpPct = b.hp / b.maxHp;
+                        this.ctx.fillStyle = '#333';
+                        this.ctx.fillRect(bx, by-5, tileSize, 3);
+                        this.ctx.fillStyle = hpPct > 0.5 ? '#0f0' : hpPct > 0.25 ? '#ff0' : '#f00';
+                        this.ctx.fillRect(bx, by-5, tileSize*hpPct, 3);
+                    });
+                    
+                    // Units
+                    f.units.forEach(u => {
+                        const ux = offsetX + u.x*tileSize;
+                        const uy = offsetY + u.y*tileSize;
+                        
+                        if (u.type === ENTITY.WORKER) {
+                            this.ctx.fillStyle = f.color;
+                            this.ctx.beginPath();
+                            this.ctx.arc(ux+tileSize/2, uy+tileSize/2, tileSize/3, 0, Math.PI*2);
+                            this.ctx.fill();
+                            if (u.carriedResource) {
+                                this.ctx.fillStyle = u.carriedResource.type === 'wood' ? '#8B4513' : '#808080';
+                                this.ctx.fillRect(ux+tileSize/2-2, uy+tileSize/2-2, 4, 4);
+                            }
+                        } else {
+                            this.ctx.fillStyle = f.color;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(ux+tileSize/2, uy+3);
+                            this.ctx.lineTo(ux+tileSize-3, uy+tileSize-3);
+                            this.ctx.lineTo(ux+3, uy+tileSize-3);
+                            this.ctx.fill();
+                            // Sword
+                            this.ctx.strokeStyle = '#silver';
+                            this.ctx.lineWidth = 2;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(ux+tileSize/2, uy+tileSize/2);
+                            this.ctx.lineTo(ux+tileSize/2+4, uy+tileSize/2-4);
+                            this.ctx.stroke();
+                        }
+                        
+                        // HP bar
+                        const hpPct = u.hp / u.maxHp;
+                        this.ctx.fillStyle = '#333';
+                        this.ctx.fillRect(ux, uy-4, tileSize, 2);
+                        this.ctx.fillStyle = hpPct > 0.5 ? '#0f0' : hpPct > 0.25 ? '#ff0' : '#f00';
+                        this.ctx.fillRect(ux, uy-4, tileSize*hpPct, 2);
+                    });
+                });
+                
+                // MONSTER RENDER - THE FIX
+                this.monsters.forEach(m => {
+                    const mx = offsetX + m.x*tileSize;
+                    const my = offsetY + m.y*tileSize;
+                    
+                    // Pulsing glow effect
+                    const pulse = Math.sin(m.pulsePhase) * 0.3 + 0.7;
+                    const size = tileSize * (1 + pulse * 0.2);
+                    
+                    // Outer glow
+                    this.ctx.fillStyle = `rgba(255, 0, 255, ${0.3 * pulse})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(mx+tileSize/2, my+tileSize/2, size/1.5, 0, Math.PI*2);
+                    this.ctx.fill();
+                    
+                    // Monster body - larger than normal units
+                    this.ctx.fillStyle = '#ff00ff';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(mx+tileSize/2, my + size*0.1);
+                    this.ctx.lineTo(mx + size*0.9, my + size*0.8);
+                    this.ctx.lineTo(mx + size*0.1, my + size*0.8);
+                    this.ctx.fill();
+                    
+                    // Eyes
+                    this.ctx.fillStyle = '#fff';
+                    this.ctx.fillRect(mx+tileSize/2-3, my+tileSize/2-2, 3, 3);
+                    this.ctx.fillRect(mx+tileSize/2+1, my+tileSize/2-2, 3, 3);
+                    
+                    // Despawn indicator (fading)
+                    const despawnPct = m.despawnTimer / 600;
+                    this.ctx.fillStyle = '#333';
+                    this.ctx.fillRect(mx, my-6, tileSize, 3);
+                    this.ctx.fillStyle = despawnPct > 0.5 ? '#0f0' : despawnPct > 0.25 ? '#ff0' : '#f00';
+                    this.ctx.fillRect(mx, my-6, tileSize*despawnPct, 3);
+                    
+                    // HP bar
+                    const hpPct = m.hp / m.maxHp;
+                    this.ctx.fillStyle = '#333';
+                    this.ctx.fillRect(mx, my-9, tileSize, 2);
+                    this.ctx.fillStyle = hpPct > 0.5 ? '#f0f' : hpPct > 0.25 ? '#f0a' : '#f00';
+                    this.ctx.fillRect(mx, my-9, tileSize*hpPct, 2);
+                });
+                
+                // Particles
+                this.particles.forEach(p => {
+                    const px = offsetX + p.x*tileSize;
+                    const py = offsetY + p.y*tileSize;
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.globalAlpha = p.life / 25;
+                    this.ctx.beginPath();
+                    this.ctx.arc(px, py, p.size*this.camera.zoom, 0, Math.PI*2);
+                    this.ctx.fill();
+                });
+                this.ctx.globalAlpha = 1;
+                
+                // Minimap
+                this.drawMinimap();
+            }
+            
+            drawMinimap() {
+                const mm = this.minimapCtx;
+                const sx = this.minimap.width / this.world.width;
+                const sy = this.minimap.height / this.world.height;
+                
+                mm.fillStyle = '#0a0a0f';
+                mm.fillRect(0, 0, this.minimap.width, this.minimap.height);
+                
+                // Water
+                for (let y = 0; y < this.world.height; y++) {
+                    for (let x = 0; x < this.world.width; x++) {
+                        if (this.world.getTerrain(x, y) === TERRAIN.WATER) {
+                            mm.fillStyle = '#1e3a5f';
+                            mm.fillRect(x*sx, y*sy, sx, sy);
+                        }
+                    }
+                }
+                
+                // Factions
+                this.factions.forEach(f => {
+                    mm.fillStyle = f.color;
+                    f.buildings.forEach(b => mm.fillRect(b.x*sx, b.y*sy, sx*2, sy*2));
+                    f.units.forEach(u => mm.fillRect(u.x*sx, u.y*sy, sx, sy));
+                });
+                
+                // Monsters on minimap
+                mm.fillStyle = '#ff00ff';
+                this.monsters.forEach(m => {
+                    mm.fillRect(m.x*sx, m.y*sy, sx*2, sy*2);
+                });
+            }
+            
+            updateTooltip(e) {
+                const tooltip = document.getElementById('tooltip');
+                const rect = this.canvas.getBoundingClientRect();
+                const tileSize = 16 * this.camera.zoom;
+                const x = Math.floor((e.clientX - rect.left - this.canvas.width/2 - this.camera.x) / tileSize + this.world.width/2);
+                const y = Math.floor((e.clientY - rect.top - this.canvas.height/2 - this.camera.y) / tileSize + this.world.height/2);
+                
+                if (x >= 0 && x < this.world.width && y >= 0 && y < this.world.height) {
+                    const entity = this.world.getEntity(x, y);
+                    const res = this.world.getResource(x, y);
+                    const terr = this.world.getTerrain(x, y);
+                    
+                    let text = `<strong>${x},${y}</strong><br>`;
+                    const terrNames = ['Wasser', 'Gras', 'Wald', 'Hügel'];
+                    text += `${terrNames[terr]}<br>`;
+                    
+                    if (res) text += `🪵 ${res.type}: ${res.amount}<br>`;
+                    
+                    if (entity) {
+                        if (entity.factionId >= 0) {
+                            const f = this.factions[entity.factionId];
+                            text += `<span style="color:${f.color}">${f.name}</span><br>`;
+                        } else if (entity.factionId === -1) {
+                            text += `<span style="color:#ff00ff">👹 Monster</span><br>`;
+                        }
+                        text += `${entity.type}<br>❤️ ${Math.ceil(entity.hp)}/${entity.maxHp}`;
+                        if (entity.despawnTimer) {
+                            text += `<br>⏱️ ${Math.ceil(entity.despawnTimer/30)}s`;
+                        }
+                    }
+                    
+                    tooltip.innerHTML = text;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX + 10) + 'px';
+                    tooltip.style.top = (e.clientY + 10) + 'px';
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            }
+            
+            updateUI() {
+                document.getElementById('tickCount').textContent = this.tick;
+                
+                const list = document.getElementById('factionsList');
+                list.innerHTML = '';
+                
+                this.factions.forEach(f => {
+                    const div = document.createElement('div');
+                    div.className = 'faction-stat';
+                    div.style.borderLeftColor = f.color;
+                    
+                    const popPct = f.population / f.populationCap;
+                    
+                    div.innerHTML = `
+                        <div class="faction-dot" style="background:${f.color}"></div>
+                        <div style="flex:1">
+                            <div style="font-weight:bold;color:${f.color};font-size:0.9em">${f.name}</div>
+                            <div style="display:flex;gap:8px;margin-top:2px;opacity:0.9">
+                                <span>👥${f.population}</span>
+                                <span>⚔️${f.soldiers}</span>
+                                <span>🪵${f.wood}</span>
+                            </div>
+                            <div class="mini-bar">
+                                <div class="mini-fill" style="width:${popPct*100}%;background:${popPct>0.8?'#e94560':'#4ecca3'}"></div>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+            
+            log(msg, important) {
+                const log = document.getElementById('eventLog');
+                const entry = document.createElement('div');
+                entry.className = 'log-entry' + (important ? ' important' : '');
+                entry.textContent = `[${this.tick}] ${msg}`;
+                log.insertBefore(entry, log.firstChild);
+                while (log.children.length > 15) log.removeChild(log.lastChild);
+            }
+            
+            togglePause() {
+                this.paused = !this.paused;
+                document.getElementById('pauseBtn').textContent = this.paused ? '▶️' : '⏸️';
+            }
+            
+            loop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        // Global functions for UI
+        function toggleMode() {
+            const btn = document.getElementById('modeToggle');
+            const text = document.getElementById('modeText');
+            const activeName = document.getElementById('activePowerName');
+            
+            game.interventionMode = !game.interventionMode;
+            
+            if (game.interventionMode) {
+                btn.textContent = '⚡ Eingreifen';
+                btn.classList.add('intervention');
+                text.textContent = 'Eingriffsmodus - Wähle Zauber unten, dann tippe auf die Karte';
+                if (game.selectedPower) {
+                    activeName.textContent = 'Aktiv: ' + getPowerName(game.selectedPower);
+                    activeName.style.display = 'inline';
+                }
+            } else {
+                btn.textContent = '👁️ Beobachten';
+                btn.classList.remove('intervention');
+                text.textContent = 'Beobachtungsmodus - Tippe auf Einheiten zum Infos anzeigen';
+                activeName.style.display = 'none';
+            }
+        }
+
+        function selectPower(power) {
+            // Auto-enable intervention mode if not active
+            if (!game.interventionMode) {
+                toggleMode();
+            }
+            
+            // Toggle same power off
+            if (game.selectedPower === power) {
+                game.selectedPower = null;
+                document.querySelectorAll('.power-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('activePowerName').style.display = 'none';
+                return;
+            }
+            
+            game.selectedPower = power;
+            
+            // Visual feedback
+            document.querySelectorAll('.power-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + power).classList.add('active');
+            
+            const name = getPowerName(power);
+            document.getElementById('activePowerName').textContent = 'Aktiv: ' + name;
+            document.getElementById('activePowerName').style.display = 'inline';
+        }
+
+        function getPowerName(p) {
+            const names = {
+                bless: '🌧️ Segen', heal: '💚 Heilen', resources: '📦 Ressourcen',
+                growth: '⚡ Wachstum', lightning: '⚡ Blitz', fire: '🔥 Feuer',
+                monster: '👹 Monster', plague: '☠️ Plage'
+            };
+            return names[p] || p;
+        }
+
+        function cycleSpeed() {
+            const speeds = [0.5, 1, 2, 4];
+            const cur = game.speed;
+            let idx = speeds.indexOf(cur);
+            if (idx === -1) idx = 1;
+            idx = (idx + 1) % speeds.length;
+            game.speed = speeds[idx];
+            document.getElementById('speedBtn').textContent = speeds[idx] + 'x';
+        }
+
+        function fitToWorld() {
+            if (!game.world) return;
+            const zoomX = (game.canvas.width * 0.95) / (game.world.width * 16);
+            const zoomY = (game.canvas.height * 0.95) / (game.world.height * 16);
+            game.camera.zoom = Math.max(0.3, Math.min(2.5, Math.min(zoomX, zoomY)));
+            game.camera.x = 0;
+            game.camera.y = 0;
+        }
+
+        // Init
+        window.game = new GodSimulation();
+    </script>
+</body>
+</html>
