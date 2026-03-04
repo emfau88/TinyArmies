@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>War Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        :root {
+            --red-primary: #ff416c;
+            --red-dark: #c9184a;
+            --blue-primary: #2193b0;
+            --blue-dark: #0d5c75;
+            --panel-bg: rgba(15, 15, 25, 0.98);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: white;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .control-section {
+            background: var(--panel-bg);
+            padding: 4px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 3px;
+            align-items: center;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .unit-btn {
+            flex: 1;
+            padding: 4px 2px;
+            border: none;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            min-height: 32px;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .unit-btn:active {
+            transform: scale(0.95);
+        }
+
+        .unit-btn.red {
+            background: linear-gradient(135deg, var(--red-primary), var(--red-dark));
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .unit-btn.blue {
+            background: linear-gradient(135deg, var(--blue-primary), var(--blue-dark));
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .unit-btn.selected {
+            box-shadow: 0 0 0 2px #ffd700;
+            transform: translateY(-1px);
+        }
+
+        .unit-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .unit-icon {
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .unit-cost {
+            font-size: 8px;
+            opacity: 0.9;
+        }
+
+        .main-controls {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+            padding: 3px;
+            background: rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+            min-width: 70px;
+        }
+
+        .btn-pause {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            min-width: 70px;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            min-width: 60px;
+        }
+
+        .mode-switch {
+            display: flex;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 2px;
+            gap: 2px;
+        }
+
+        .mode-btn {
+            padding: 4px 10px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            font-size: 9px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            height: 22px;
+        }
+
+        .mode-btn.active {
+            background: rgba(255,215,0,0.3);
+            color: #ffd700;
+        }
+
+        .btn-support {
+            background: linear-gradient(135deg, #666, #999);
+            color: white;
+            font-size: 9px;
+            min-width: 80px;
+        }
+
+        .btn-support.red-support {
+            background: linear-gradient(135deg, var(--red-primary), var(--red-dark));
+        }
+
+        .btn-support.blue-support {
+            background: linear-gradient(135deg, var(--blue-primary), var(--blue-dark));
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 12px;
+        }
+
+        .zoom-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 9px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .zoom-btn.active {
+            background: #ffd700;
+            color: #000;
+        }
+
+        .player-gold {
+            font-size: 10px;
+            color: #ffd700;
+            font-weight: bold;
+            padding: 2px 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            display: none;
+        }
+
+        .player-gold.active {
+            display: block;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+            touch-action: none;
+            min-height: 0;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .placement-hint {
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        .placement-hint.active {
+            opacity: 1;
+        }
+
+        .balance-legend {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: rgba(0,0,0,0.7);
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 9px;
+            color: rgba(255,255,255,0.9);
+            z-index: 10;
+        }
+
+        .balance-row {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            margin: 1px 0;
+        }
+
+        .balance-arrow {
+            color: #ffd700;
+            font-size: 10px;
+        }
+
+        .fps-counter {
+            position: fixed;
+            top: 4px;
+            left: 4px;
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 9px;
+            z-index: 100;
+            border: 1px solid #0f0;
+        }
+
+        .ai-status {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 9px;
+            color: rgba(255,255,255,0.9);
+            z-index: 10;
+            display: none;
+        }
+
+        .ai-status.active {
+            display: block;
+        }
+
+        .ai-gold-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 1px 0;
+        }
+
+        .ai-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        .ai-indicator.red { background: var(--red-primary); }
+        .ai-indicator.blue { background: var(--blue-primary); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="fps-counter" id="fps">FPS: 60</div>
+
+    <div class="game-container">
+        <div class="control-section">
+            <div class="control-row" id="sandboxControls">
+                <button class="unit-btn red" onclick="selectUnit('red', 'swordsman')">
+                    <span class="unit-icon">⚔️</span>
+                    <span class="unit-cost">50g</span>
+                </button>
+                <button class="unit-btn red" onclick="selectUnit('red', 'archer')">
+                    <span class="unit-icon">🏹</span>
+                    <span class="unit-cost">75g</span>
+                </button>
+                <button class="unit-btn red" onclick="selectUnit('red', 'knight')">
+                    <span class="unit-icon">🐴</span>
+                    <span class="unit-cost">150g</span>
+                </button>
+                <div style="width: 10px;"></div>
+                <button class="unit-btn blue" onclick="selectUnit('blue', 'swordsman')">
+                    <span class="unit-icon">⚔️</span>
+                    <span class="unit-cost">50g</span>
+                </button>
+                <button class="unit-btn blue" onclick="selectUnit('blue', 'archer')">
+                    <span class="unit-icon">🏹</span>
+                    <span class="unit-cost">75g</span>
+                </button>
+                <button class="unit-btn blue" onclick="selectUnit('blue', 'knight')">
+                    <span class="unit-icon">🐴</span>
+                    <span class="unit-cost">150g</span>
+                </button>
+            </div>
+
+            <div class="main-controls">
+                <div class="mode-switch">
+                    <button class="mode-btn active" onclick="setGameMode('sandbox')" data-mode="sandbox">Sandbox</button>
+                    <button class="mode-btn" onclick="setGameMode('aibattle')" data-mode="aibattle">AI</button>
+                </div>
+
+                <button class="control-btn btn-start" id="startBtn" onclick="toggleSimulation()">START</button>
+                <button class="control-btn btn-reset" onclick="resetSimulation()">RESET</button>
+                
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="setZoom(0.5)" id="zoom05">0.5</button>
+                    <button class="zoom-btn active" onclick="setZoom(0.75)" id="zoom075">0.75</button>
+                    <button class="zoom-btn" onclick="setZoom(1.0)" id="zoom10">1.0</button>
+                </div>
+
+                <button class="control-btn btn-support" id="supportBtn" onclick="toggleSupport()" style="display: none;">
+                    Hilfe: Aus
+                </button>
+
+                <div class="player-gold" id="playerGoldDisplay">
+                    Gold: <span id="playerGold">150</span>g
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer">
+            <div class="placement-hint" id="placementHint"></div>
+            <div class="balance-legend">
+                <div class="balance-row">⚔️ <span class="balance-arrow">→</span> 🏹</div>
+                <div class="balance-row">🏹 <span class="balance-arrow">→</span> 🐴</div>
+                <div class="balance-row">🐴 <span class="balance-arrow">→</span> ⚔️</div>
+            </div>
+            <div class="ai-status" id="aiStatus">
+                <div class="ai-gold-row">
+                    <div class="ai-indicator red"></div>
+                    <span>🔴 <span id="aiRedGold">500</span>g</span>
+                </div>
+                <div class="ai-gold-row">
+                    <div class="ai-indicator blue"></div>
+                    <span>🔵 <span id="aiBlueGold">500</span>g</span>
+                </div>
+            </div>
+            <canvas id="gameCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // ==================== ASSET LOADING ====================
+        const ASSETS = {
+            red: {
+                swordsman: new Image(),
+                archer: new Image(),
+                knight: new Image()
+            },
+            blue: {
+                swordsman: new Image(),
+                archer: new Image(),
+                knight: new Image()
+            }
+        };
+
+        // Red assets
+        ASSETS.red.swordsman.src = 'https://raw.githubusercontent.com/emfau88/TinyArmies/refs/heads/main/redsword.png';
+        ASSETS.red.archer.src = 'https://raw.githubusercontent.com/emfau88/TinyArmies/refs/heads/main/redarcher.png';
+        ASSETS.red.knight.src = 'https://raw.githubusercontent.com/emfau88/TinyArmies/refs/heads/main/redknight.png';
+
+        // Blue assets
+        ASSETS.blue.swordsman.src = 'https://raw.githubusercontent.com/emfau88/TinyArmies/refs/heads/main/bluesword.png';
+        ASSETS.blue.archer.src = 'https://raw.githubusercontent.com/emfau88/TinyArmies/refs/heads/main/bluearcher.png';
+        ASSETS.blue.knight.src = 'https://raw.githubusercontent.com/emfau88/TinyArmies/refs/heads/main/blueknight.png';
+
+        let assetsLoaded = false;
+        let assetsToLoad = 6;
+        let assetsLoadedCount = 0;
+
+        function onAssetLoad() {
+            assetsLoadedCount++;
+            if (assetsLoadedCount >= assetsToLoad) {
+                assetsLoaded = true;
+                draw();
+            }
+        }
+
+        Object.values(ASSETS.red).forEach(img => {
+            img.onload = onAssetLoad;
+            img.onerror = () => console.error('Failed to load red asset');
+        });
+
+        Object.values(ASSETS.blue).forEach(img => {
+            img.onload = onAssetLoad;
+            img.onerror = () => console.error('Failed to load blue asset');
+        });
+
+        // ==================== GAME CONFIG ====================
+        let gameMode = 'sandbox';
+        let supportTeam = null;
+        let zoomLevel = 0.75;
+        let worldWidth, worldHeight;
+        let isRunning = false;
+        let animationId;
+        let lastTime = 0;
+        let fps = 60;
+        let frameCount = 0;
+        let lastFpsTime = 0;
+
+        // ==================== DATA ====================
+        const TYPE_ADVANTAGE = {
+            swordsman: { strongAgainst: 'archer', weakAgainst: 'knight', bonus: 1.5 },
+            archer: { strongAgainst: 'knight', weakAgainst: 'swordsman', bonus: 1.5 },
+            knight: { strongAgainst: 'swordsman', weakAgainst: 'archer', bonus: 1.5 }
+        };
+
+        const UNIT_TYPES = {
+            swordsman: {
+                hp: 100, damage: 20, speed: 0.75, range: 30, attackSpeed: 2000,
+                color: '#ff6b6b', size: 12, cost: 50,
+                spriteFacesRight: false  // Sprite schaut nach links, muss gespiegelt werden für rechts
+            },
+            archer: {
+                hp: 60, damage: 15, speed: 0.6, range: 200, attackSpeed: 3000,
+                color: '#ffd93d', size: 10, cost: 75,
+                spriteFacesRight: true   // Sprite schaut nach rechts, normal
+            },
+            knight: {
+                hp: 200, damage: 40, speed: 0.8, range: 40, attackSpeed: 2400,
+                color: '#c0c0c0', size: 16, cost: 150,
+                chargeRange: 150, chargeSpeed: 3.0, chargeCooldown: 5000, chargeDamage: 2.0,
+                spriteFacesRight: false  // Sprite schaut nach links, muss gespiegelt werden für rechts
+            }
+        };
+
+        const VETERAN_RANKS = [
+            { kills: 0, title: '', multiplier: 1.0, color: '#ffffff' },
+            { kills: 3, title: 'veteran', multiplier: 1.2, color: '#ffd700' },
+            { kills: 8, title: 'elite', multiplier: 1.5, color: '#ff6b35' },
+            { kills: 15, title: 'hero', multiplier: 2.0, color: '#9d4edd' }
+        ];
+
+        const AI_ECONOMY = {
+            red: { gold: 500, income: 20, cap: 1200, lastSpawn: 0, spawnDelay: 5000 },
+            blue: { gold: 500, income: 20, cap: 1200, lastSpawn: 0, spawnDelay: 5000 }
+        };
+        
+        const PLAYER_ECONOMY = { gold: 150, income: 8, cap: 400, lastSpawn: 0, spawnDelay: 3000 };
+        const MAX_UNITS_PER_TEAM = 25;
+        const MAX_SUPPORT_UNITS = 5;
+
+        // ==================== STATE ====================
+        const units = [];
+        const projectiles = [];
+        const particles = [];
+        const effects = [];
+        let decorations = [];
+        let selectedUnitType = null;
+        let selectedTeam = null;
+
+        // ==================== CANVAS SETUP ====================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+
+        function resizeCanvas() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            worldWidth = canvas.width / 0.5;
+            worldHeight = canvas.height / 0.5;
+            if (decorations.length === 0) {
+                generateDecorations();
+            }
+            draw();
+        }
+
+        function screenToWorld(screenX, screenY) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const worldX = (screenX - centerX) / zoomLevel + worldWidth / 2;
+            const worldY = (screenY - centerY) / zoomLevel + worldHeight / 2;
+            return { x: worldX, y: worldY };
+        }
+
+        function worldToScreen(worldX, worldY) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const screenX = (worldX - worldWidth / 2) * zoomLevel + centerX;
+            const screenY = (worldY - worldHeight / 2) * zoomLevel + centerY;
+            return { x: screenX, y: screenY };
+        }
+
+        // ==================== DECORATIONS ====================
+        const DECORATION_TYPES = ['tree', 'bush', 'rock_small', 'rock_large'];
+
+        function generateDecorations() {
+            decorations = [];
+            const count = 40 + Math.floor(Math.random() * 20);
+            
+            const zonesX = 4;
+            const zonesY = 3;
+            const zoneWidth = worldWidth / zonesX;
+            const zoneHeight = worldHeight / zonesY;
+            
+            for (let i = 0; i < count; i++) {
+                const zoneX = Math.floor(Math.random() * zonesX);
+                const zoneY = Math.floor(Math.random() * zonesY);
+                
+                const padding = 60;
+                const x = zoneX * zoneWidth + padding + Math.random() * (zoneWidth - padding * 2);
+                const y = zoneY * zoneHeight + padding + Math.random() * (zoneHeight - padding * 2);
+                
+                const type = DECORATION_TYPES[Math.floor(Math.random() * DECORATION_TYPES.length)];
+                const rotation = (Math.random() - 0.5) * 24 * (Math.PI / 180);
+                
+                decorations.push({ type, x, y, rotation, scale: 0.8 + Math.random() * 0.4 });
+            }
+            
+            decorations.sort((a, b) => a.y - b.y);
+        }
+
+        function drawDecoration(dec) {
+            const pos = worldToScreen(dec.x, dec.y);
+            const screenScale = dec.scale * zoomLevel;
+            
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(dec.rotation);
+            ctx.scale(screenScale, screenScale);
+            
+            switch(dec.type) {
+                case 'tree':
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(-3, 0, 6, 15);
+                    ctx.fillStyle = '#228B22';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -35);
+                    ctx.lineTo(-15, -5);
+                    ctx.lineTo(15, -5);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(0, -25);
+                    ctx.lineTo(-12, 0);
+                    ctx.lineTo(12, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(0, -15);
+                    ctx.lineTo(-10, 8);
+                    ctx.lineTo(10, 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                    
+                case 'bush':
+                    ctx.fillStyle = '#32CD32';
+                    const bushCircles = [
+                        {x: 0, y: 0, r: 12},
+                        {x: -8, y: 5, r: 8},
+                        {x: 8, y: 5, r: 8},
+                        {x: -5, y: -8, r: 7},
+                        {x: 5, y: -8, r: 7}
+                    ];
+                    bushCircles.forEach(c => {
+                        ctx.beginPath();
+                        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    break;
+                    
+                case 'rock_small':
+                    ctx.fillStyle = '#808080';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#A9A9A9';
+                    ctx.beginPath();
+                    ctx.ellipse(-2, -2, 5, 3, -0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                    
+                case 'rock_large':
+                    ctx.fillStyle = '#696969';
+                    ctx.beginPath();
+                    ctx.moveTo(-15, 5);
+                    ctx.lineTo(-10, -15);
+                    ctx.lineTo(5, -20);
+                    ctx.lineTo(18, -5);
+                    ctx.lineTo(12, 8);
+                    ctx.lineTo(-8, 10);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = '#808080';
+                    ctx.beginPath();
+                    ctx.moveTo(-8, 0);
+                    ctx.lineTo(-5, -10);
+                    ctx.lineTo(2, -12);
+                    ctx.lineTo(8, -3);
+                    ctx.lineTo(0, 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+            }
+            
+            ctx.restore();
+        }
+
+        // ==================== UNIT CLASS ====================
+        class Unit {
+            constructor(team, type, x, y) {
+                this.team = team;
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.stats = { ...UNIT_TYPES[type] };
+                this.hp = this.stats.hp;
+                this.maxHp = this.stats.hp;
+                this.lastAttack = 0;
+                this.target = null;
+                this.vx = 0;
+                this.vy = 0;
+                this.angle = 0;
+                this.isDead = false;
+                this.shieldActive = false;
+                this.shieldTime = 0;
+                this.kills = 0;
+                this.rank = 0;
+                this.isCharging = false;
+                this.lastCharge = 0;
+                this.chargeTargetX = 0;
+                this.chargeTargetY = 0;
+                this.isPlayerSupport = false;
+                this.facingRight = true;
+            }
+
+            getCurrentStats() {
+                const rankData = VETERAN_RANKS[this.rank];
+                return {
+                    damage: this.stats.damage * rankData.multiplier,
+                    hp: this.stats.hp * rankData.multiplier,
+                    speed: this.stats.speed * (1 + (this.rank * 0.1))
+                };
+            }
+
+            updateRank() {
+                for (let i = VETERAN_RANKS.length - 1; i >= 0; i--) {
+                    if (this.kills >= VETERAN_RANKS[i].kills) {
+                        this.rank = i;
+                        break;
+                    }
+                }
+            }
+
+            getDamageMultiplier(targetType) {
+                const advantage = TYPE_ADVANTAGE[this.type];
+                if (advantage.strongAgainst === targetType) return advantage.bonus;
+                if (advantage.weakAgainst === targetType) return 1 / advantage.bonus;
+                return 1.0;
+            }
+
+            update(deltaTime) {
+                if (this.isDead) return;
+
+                const currentStats = this.getCurrentStats();
+                let nearest = null;
+                let minDist = Infinity;
+                
+                for (const unit of units) {
+                    if (unit.team !== this.team && !unit.isDead) {
+                        const dist = Math.hypot(unit.x - this.x, unit.y - this.y);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = unit;
+                        }
+                    }
+                }
+
+                this.target = nearest;
+
+                if (this.target) {
+                    const dx = this.target.x - this.x;
+                    const dy = this.target.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    this.angle = Math.atan2(dy, dx);
+
+                    // Face the target: if target is to the right, face right; if left, face left
+                    if (dx > 0) {
+                        this.facingRight = true;
+                    } else if (dx < 0) {
+                        this.facingRight = false;
+                    }
+                    // If dx === 0, keep current facing
+
+                    if (this.type === 'knight' && !this.isCharging) {
+                        const now = Date.now();
+                        if (now - this.lastCharge > this.stats.chargeCooldown && dist > this.stats.range && dist < this.stats.chargeRange) {
+                            this.isCharging = true;
+                            this.lastCharge = now;
+                            this.chargeTargetX = this.target.x;
+                            this.chargeTargetY = this.target.y;
+                            createChargeEffect(this.x, this.y, this.team);
+                        }
+                    }
+
+                    let moveSpeed = currentStats.speed;
+                    
+                    if (this.isCharging) {
+                        moveSpeed = this.stats.chargeSpeed;
+                        const chargeDist = Math.hypot(this.chargeTargetX - this.x, this.chargeTargetY - this.y);
+                        
+                        if (chargeDist < this.stats.range || dist < this.stats.range) {
+                            this.isCharging = false;
+                            const damageMult = this.stats.chargeDamage * this.getDamageMultiplier(this.target.type);
+                            const killed = this.target.takeDamage(currentStats.damage * damageMult, true);
+                            
+                            const knockbackForce = 30;
+                            this.target.x += Math.cos(this.angle) * knockbackForce;
+                            this.target.y += Math.sin(this.angle) * knockbackForce;
+                            
+                            createImpactEffect(this.target.x, this.target.y, this.team);
+                            
+                            if (killed) {
+                                this.kills++;
+                                this.updateRank();
+                            }
+                        }
+                    }
+
+                    if (dist > this.stats.range) {
+                        this.vx = Math.cos(this.angle) * moveSpeed;
+                        this.vy = Math.sin(this.angle) * moveSpeed;
+                        this.x += this.vx;
+                        this.y += this.vy;
+                    } else if (!this.isCharging) {
+                        const now = Date.now();
+                        if (now - this.lastAttack > this.stats.attackSpeed) {
+                            this.attack(currentStats.damage);
+                            this.lastAttack = now;
+                        }
+                    }
+                } else {
+                    this.isCharging = false;
+                }
+
+                this.x = Math.max(20, Math.min(worldWidth - 20, this.x));
+                this.y = Math.max(20, Math.min(worldHeight - 20, this.y));
+
+                if (this.shieldActive) {
+                    this.shieldTime -= deltaTime;
+                    if (this.shieldTime <= 0) this.shieldActive = false;
+                }
+            }
+
+            attack(damage) {
+                if (this.type === 'archer') {
+                    projectiles.push(new Projectile(
+                        this.x, this.y, 
+                        this.target.x, this.target.y,
+                        this.team, damage, this.getDamageMultiplier(this.target.type)
+                    ));
+                } else {
+                    if (Math.random() < 0.3) this.target.activateShield();
+                    const damageMult = this.getDamageMultiplier(this.target.type);
+                    const killed = this.target.takeDamage(damage * damageMult);
+                    if (killed) {
+                        this.kills++;
+                        this.updateRank();
+                    }
+                    createSlashEffect(this.target.x, this.target.y, this.team);
+                }
+            }
+
+            takeDamage(damage, isCharge = false) {
+                if (this.shieldActive) {
+                    damage *= 0.3;
+                    createShieldEffect(this.x, this.y);
+                }
+                this.hp -= damage;
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.isDead = true;
+                    createExplosion(this.x, this.y, this.team === 'red' ? '#ff416c' : '#2193b0');
+                    return true;
+                }
+                return false;
+            }
+
+            activateShield() {
+                this.shieldActive = true;
+                this.shieldTime = 500;
+            }
+
+            draw() {
+                if (this.isDead) return;
+                const pos = worldToScreen(this.x, this.y);
+                const currentStats = this.getCurrentStats();
+                const rankData = VETERAN_RANKS[this.rank];
+                const sizeMultiplier = 1 + (this.rank * 0.15);
+                const size = this.stats.size * sizeMultiplier * zoomLevel;
+
+                ctx.save();
+                ctx.translate(pos.x, pos.y);
+
+                // Charge-Trail
+                if (this.isCharging) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    for (let i = 1; i <= 3; i++) {
+                        ctx.beginPath();
+                        ctx.arc(-i * 10 * zoomLevel, 0, size * (1 - i * 0.2), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Draw sprite if assets loaded, otherwise fallback to shapes
+                const asset = ASSETS[this.team] && ASSETS[this.team][this.type];
+                if (assetsLoaded && asset && asset.complete && asset.naturalWidth > 0) {
+                    const spriteSize = size * 2.5;
+                    
+                    // Determine if we need to flip the sprite
+                    // spriteFacesRight: true = sprite looks right, false = sprite looks left
+                    // facingRight: true = should look right, false = should look left
+                    // If they don't match, we need to flip
+                    const spriteFacesRight = this.stats.spriteFacesRight;
+                    const shouldFlip = this.facingRight !== spriteFacesRight;
+                    
+                    if (shouldFlip) {
+                        ctx.scale(-1, 1);
+                    }
+                    
+                    // Draw the sprite centered
+                    ctx.drawImage(
+                        asset, 
+                        -spriteSize / 2, 
+                        -spriteSize / 2, 
+                        spriteSize, 
+                        spriteSize
+                    );
+                    
+                    // Reset scale for effects if we flipped
+                    if (shouldFlip) {
+                        ctx.scale(-1, 1);
+                    }
+
+                    // Veteran glow effect around sprite
+                    if (this.rank > 0 && !this.isCharging) {
+                        ctx.shadowColor = rankData.color;
+                        ctx.shadowBlur = (15 + this.rank * 8) * zoomLevel;
+                        ctx.strokeStyle = rankData.color;
+                        ctx.lineWidth = 3 * zoomLevel;
+                        ctx.strokeRect(-spriteSize/2 - 2, -spriteSize/2 - 2, spriteSize + 4, spriteSize + 4);
+                        ctx.shadowBlur = 0;
+                    }
+
+                    // Charge glow effect
+                    if (this.isCharging) {
+                        ctx.shadowColor = '#ffffff';
+                        ctx.shadowBlur = 25 * zoomLevel;
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 4 * zoomLevel;
+                        ctx.strokeRect(-spriteSize/2 - 4, -spriteSize/2 - 4, spriteSize + 8, spriteSize + 8);
+                        ctx.shadowBlur = 0;
+                    }
+
+                } else {
+                    // Fallback to original shape rendering
+                    ctx.fillStyle = this.team === 'red' ? '#ff416c' : '#2193b0';
+                    ctx.beginPath();
+                    
+                    if (this.type === 'swordsman') {
+                        ctx.arc(0, 0, size, 0, Math.PI * 2);
+                    } else if (this.type === 'archer') {
+                        ctx.moveTo(size, 0);
+                        ctx.lineTo(-size / 2, size / 2);
+                        ctx.lineTo(-size / 2, -size / 2);
+                        ctx.closePath();
+                    } else if (this.type === 'knight') {
+                        ctx.rect(-size, -size, size * 2, size * 2);
+                    }
+                    
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = this.isCharging ? '#ffffff' : rankData.color;
+                    ctx.lineWidth = this.isCharging ? 4 * zoomLevel : (2 + this.rank) * zoomLevel;
+                    ctx.stroke();
+
+                    if (this.isCharging) {
+                        ctx.shadowColor = '#ffffff';
+                        ctx.shadowBlur = 20 * zoomLevel;
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 3 * zoomLevel;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+
+                    // Weapon rotation for non-sprite units
+                    ctx.rotate(this.angle);
+                    ctx.fillStyle = this.stats.color;
+                    ctx.beginPath();
+                    if (this.type === 'swordsman') {
+                        ctx.rect(5 * zoomLevel, -2 * zoomLevel, 15 * zoomLevel, 4 * zoomLevel);
+                    } else if (this.type === 'archer') {
+                        ctx.rect(5 * zoomLevel, -8 * zoomLevel, 2 * zoomLevel, 16 * zoomLevel);
+                    } else if (this.type === 'knight') {
+                        ctx.rect(8 * zoomLevel, -6 * zoomLevel, 20 * zoomLevel, 12 * zoomLevel);
+                    }
+                    ctx.fill();
+
+                    if (this.rank > 0 && !this.isCharging) {
+                        ctx.shadowColor = rankData.color;
+                        ctx.shadowBlur = (10 + this.rank * 5) * zoomLevel;
+                        ctx.strokeStyle = rankData.color;
+                        ctx.lineWidth = 2 * zoomLevel;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+                }
+
+                ctx.restore();
+
+                // Schild
+                if (this.shieldActive) {
+                    ctx.strokeStyle = 'rgba(100, 200, 255, 0.8)';
+                    ctx.lineWidth = 3 * zoomLevel;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, size + 8 * zoomLevel, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
+                    ctx.fill();
+                }
+
+                // HP-Bar
+                const barWidth = 24 * zoomLevel;
+                const barHeight = 3 * zoomLevel;
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(pos.x - barWidth/2, pos.y - size - 12 * zoomLevel, barWidth, barHeight);
+                
+                ctx.fillStyle = this.hp > currentStats.hp * 0.5 ? '#0f0' : this.hp > currentStats.hp * 0.25 ? '#ff0' : '#f00';
+                ctx.fillRect(pos.x - barWidth/2, pos.y - size - 12 * zoomLevel, barWidth * (this.hp / currentStats.hp), barHeight);
+
+                // Veteran-Sterne
+                if (this.rank > 0) {
+                    ctx.fillStyle = rankData.color;
+                    ctx.font = `bold ${10 * zoomLevel}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('★'.repeat(this.rank), pos.x, pos.y - size - 16 * zoomLevel);
+                    
+                    ctx.font = `${9 * zoomLevel}px Arial`;
+                    ctx.fillText(this.kills + '', pos.x + 18 * zoomLevel, pos.y - 3 * zoomLevel);
+                }
+
+                // Charge-Indicator
+                if (this.type === 'knight' && !this.isCharging) {
+                    const now = Date.now();
+                    const chargeReady = now - this.lastCharge > this.stats.chargeCooldown;
+                    if (!chargeReady) {
+                        const cooldownProgress = (now - this.lastCharge) / this.stats.chargeCooldown;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.fillRect(pos.x - 10 * zoomLevel, pos.y + size + 5 * zoomLevel, 20 * zoomLevel * cooldownProgress, 3 * zoomLevel);
+                    } else {
+                        ctx.fillStyle = '#ffd700';
+                        ctx.font = `${8 * zoomLevel}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText('CHARGE', pos.x, pos.y + size + 12 * zoomLevel);
+                    }
+                }
+            }
+        }
+
+        // ==================== PROJECTILE CLASS ====================
+        class Projectile {
+            constructor(x, y, targetX, targetY, team, damage, typeMultiplier = 1.0) {
+                this.x = x;
+                this.y = y;
+                this.team = team;
+                this.damage = damage;
+                this.typeMultiplier = typeMultiplier;
+                this.speed = 4;
+                const angle = Math.atan2(targetY - y, targetX - x);
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+                this.active = true;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                for (const unit of units) {
+                    if (unit.team !== this.team && !unit.isDead) {
+                        const dist = Math.hypot(unit.x - this.x, unit.y - this.y);
+                        if (dist < 15) {
+                            const killed = unit.takeDamage(this.damage * this.typeMultiplier);
+                            if (killed) {
+                                for (const u of units) {
+                                    if (u.team === this.team && !u.isDead) {
+                                        u.kills++;
+                                        u.updateRank();
+                                        break;
+                                    }
+                                }
+                            }
+                            this.active = false;
+                            createHitEffect(this.x, this.y);
+                            break;
+                        }
+                    }
+                }
+
+                if (this.x < 0 || this.x > worldWidth || this.y < 0 || this.y > worldHeight) {
+                    this.active = false;
+                }
+            }
+
+            draw() {
+                const pos = worldToScreen(this.x, this.y);
+                ctx.fillStyle = this.team === 'red' ? '#ff416c' : '#2193b0';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 3 * zoomLevel, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = this.team === 'red' ? 'rgba(255, 65, 108, 0.3)' : 'rgba(33, 147, 176, 0.3)';
+                ctx.lineWidth = 2 * zoomLevel;
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(pos.x - this.vx * 3 * zoomLevel, pos.y - this.vy * 3 * zoomLevel);
+                ctx.stroke();
+            }
+        }
+
+        // ==================== PARTICLE & EFFECT CLASSES ====================
+        class Particle {
+            constructor(x, y, color, speed, life) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * speed;
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = Math.sin(this.angle) * this.speed;
+                this.life = life;
+                this.maxLife = life;
+                this.size = (Math.random() * 4 + 2);
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1;
+                this.life--;
+                this.size *= 0.98;
+            }
+
+            draw() {
+                const pos = worldToScreen(this.x, this.y);
+                const alpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, this.size * zoomLevel, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Effect {
+            constructor(x, y, type, color) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.color = color;
+                this.life = 30;
+                this.maxLife = 30;
+                this.size = 0;
+            }
+
+            update() {
+                this.life--;
+                if (this.type === 'explosion') this.size += 2;
+                else if (this.type === 'shield') this.size = 40 + Math.sin(this.life * 0.3) * 5;
+                else if (this.type === 'slash') this.size += 3;
+                else if (this.type === 'charge') this.size += 5;
+                else if (this.type === 'impact') this.size += 8;
+            }
+
+            draw() {
+                const pos = worldToScreen(this.x, this.y);
+                const alpha = this.life / this.maxLife;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                
+                if (this.type === 'explosion') {
+                    const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, this.size * zoomLevel);
+                    gradient.addColorStop(0, this.color);
+                    gradient.addColorStop(0.5, 'orange');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, this.size * zoomLevel, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2 * zoomLevel;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, this.size * 1.2 * zoomLevel, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (this.type === 'shield') {
+                    ctx.strokeStyle = '#64c8ff';
+                    ctx.lineWidth = 3 * zoomLevel;
+                    ctx.setLineDash([5 * zoomLevel, 5 * zoomLevel]);
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, this.size * zoomLevel, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (this.type === 'slash') {
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 3 * zoomLevel;
+                    ctx.beginPath();
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (Math.PI * 2 / 8) * i + this.life * 0.2;
+                        const r = this.size * zoomLevel;
+                        ctx.moveTo(pos.x, pos.y);
+                        ctx.lineTo(pos.x + Math.cos(angle) * r, pos.y + Math.sin(angle) * r);
+                    }
+                    ctx.stroke();
+                } else if (this.type === 'charge') {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2 * zoomLevel;
+                    ctx.setLineDash([10 * zoomLevel, 5 * zoomLevel]);
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, this.size * zoomLevel, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, this.size * zoomLevel);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                } else if (this.type === 'impact') {
+                    ctx.strokeStyle = '#ffd700';
+                    ctx.lineWidth = 4 * zoomLevel;
+                    ctx.beginPath();
+                    for (let i = 0; i < 12; i++) {
+                        const angle = (Math.PI * 2 / 12) * i;
+                        const r = this.size * zoomLevel;
+                        ctx.moveTo(pos.x, pos.y);
+                        ctx.lineTo(pos.x + Math.cos(angle) * r, pos.y + Math.sin(angle) * r);
+                    }
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, this.size * 0.5 * zoomLevel, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // ==================== EFFECT FUNCTIONS ====================
+        function createExplosion(x, y, color) {
+            effects.push(new Effect(x, y, 'explosion', color));
+            for (let i = 0; i < 12; i++) {
+                particles.push(new Particle(x, y, color, 5, 40));
+            }
+        }
+
+        function createShieldEffect(x, y) {
+            effects.push(new Effect(x, y, 'shield', '#64c8ff'));
+        }
+
+        function createSlashEffect(x, y, team) {
+            effects.push(new Effect(x, y, 'slash', team === 'red' ? '#ff416c' : '#2193b0'));
+        }
+
+        function createChargeEffect(x, y, team) {
+            effects.push(new Effect(x, y, 'charge', '#ffffff'));
+            for (let i = 0; i < 8; i++) {
+                particles.push(new Particle(x, y, 'rgba(255,255,255,0.5)', 3, 30));
+            }
+        }
+
+        function createImpactEffect(x, y, team) {
+            effects.push(new Effect(x, y, 'impact', '#ffd700'));
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x, y, '#ffd700', 6, 25));
+            }
+        }
+
+        function createHitEffect(x, y) {
+            for (let i = 0; i < 4; i++) {
+                particles.push(new Particle(x, y, '#ffffff', 3, 20));
+            }
+        }
+
+        // ==================== AI SYSTEM ====================
+        function updateAI(deltaTime) {
+            const now = Date.now();
+            
+            AI_ECONOMY.red.gold = Math.min(AI_ECONOMY.red.cap, AI_ECONOMY.red.gold + AI_ECONOMY.red.income * deltaTime / 1000);
+            AI_ECONOMY.blue.gold = Math.min(AI_ECONOMY.blue.cap, AI_ECONOMY.blue.gold + AI_ECONOMY.blue.income * deltaTime / 1000);
+            
+            const unitCounts = { red: 0, blue: 0 };
+            units.forEach(u => { if (!u.isDead && !u.isPlayerSupport) unitCounts[u.team]++; });
+            
+            ['red', 'blue'].forEach(team => {
+                const economy = AI_ECONOMY[team];
+                if (now - economy.lastSpawn > economy.spawnDelay && unitCounts[team] < MAX_UNITS_PER_TEAM) {
+                    const availableTypes = [];
+                    if (economy.gold >= 50) availableTypes.push('swordsman');
+                    if (economy.gold >= 75) availableTypes.push('archer');
+                    if (economy.gold >= 150) availableTypes.push('knight');
+                    
+                    if (availableTypes.length > 0) {
+                        const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+                        const cost = UNIT_TYPES[type].cost;
+                        
+                        const spawnX = team === 'red' ? 50 + Math.random() * 100 : worldWidth - 150 + Math.random() * 100;
+                        const spawnY = 50 + Math.random() * (worldHeight - 100);
+                        
+                        units.push(new Unit(team, type, spawnX, spawnY));
+                        economy.gold -= cost;
+                        economy.lastSpawn = now;
+                    }
+                }
+            });
+            
+            document.getElementById('aiRedGold').textContent = Math.floor(AI_ECONOMY.red.gold);
+            document.getElementById('aiBlueGold').textContent = Math.floor(AI_ECONOMY.blue.gold);
+        }
+
+        function updatePlayerAI(deltaTime) {
+            if (!supportTeam) return;
+            
+            const now = Date.now();
+            PLAYER_ECONOMY.gold = Math.min(PLAYER_ECONOMY.cap, PLAYER_ECONOMY.gold + PLAYER_ECONOMY.income * deltaTime / 1000);
+            
+            const supportCount = units.filter(u => u.team === supportTeam && u.isPlayerSupport).length;
+            
+            document.getElementById('playerGold').textContent = Math.floor(PLAYER_ECONOMY.gold);
+        }
+
+        // ==================== UI FUNCTIONS ====================
+        function setGameMode(mode) {
+            gameMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            const sandboxRow = document.getElementById('sandboxControls');
+            const supportBtn = document.getElementById('supportBtn');
+            const playerGold = document.getElementById('playerGoldDisplay');
+            const aiStatus = document.getElementById('aiStatus');
+            
+            if (mode === 'sandbox') {
+                sandboxRow.style.display = 'flex';
+                supportBtn.style.display = 'none';
+                playerGold.classList.remove('active');
+                aiStatus.classList.remove('active');
+                supportTeam = null;
+            } else {
+                sandboxRow.style.display = 'none';
+                supportBtn.style.display = 'block';
+                playerGold.classList.add('active');
+                aiStatus.classList.add('active');
+            }
+            
+            resetSimulation();
+        }
+
+        function toggleSupport() {
+            if (supportTeam === null) supportTeam = 'red';
+            else if (supportTeam === 'red') supportTeam = 'blue';
+            else supportTeam = null;
+            updateSupportButton();
+            updatePlacementHint();
+        }
+
+        function updateSupportButton() {
+            const btn = document.getElementById('supportBtn');
+            btn.classList.remove('red-support', 'blue-support');
+            
+            if (supportTeam === null) {
+                btn.textContent = 'Hilfe: Aus';
+            } else if (supportTeam === 'red') {
+                btn.textContent = 'Hilfe: Rot';
+                btn.classList.add('red-support');
+            } else {
+                btn.textContent = 'Hilfe: Blau';
+                btn.classList.add('blue-support');
+            }
+        }
+
+        function updatePlacementHint() {
+            const hint = document.getElementById('placementHint');
+            if (gameMode === 'sandbox' && selectedUnitType) {
+                const typeNames = { swordsman: 'Schwert', archer: 'Bogen', knight: 'Ritter' };
+                hint.textContent = `Tippen: ${typeNames[selectedUnitType]}`;
+                hint.classList.add('active');
+            } else if (gameMode === 'aibattle' && supportTeam) {
+                hint.textContent = `Tippen (${supportTeam === 'red' ? '🔴' : '🔵'})`;
+                hint.classList.add('active');
+            } else {
+                hint.classList.remove('active');
+            }
+        }
+
+        function selectUnit(team, type) {
+            if (gameMode === 'aibattle') return;
+            selectedTeam = team;
+            selectedUnitType = type;
+            
+            document.querySelectorAll('.unit-btn').forEach(btn => btn.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            
+            updatePlacementHint();
+        }
+
+        function setZoom(level) {
+            zoomLevel = level;
+            document.querySelectorAll('.zoom-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('zoom' + level.toString().replace('.', '')).classList.add('active');
+            draw();
+        }
+
+        function handleInput(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const screenX = clientX - rect.left;
+            const screenY = clientY - rect.top;
+            const worldPos = screenToWorld(screenX, screenY);
+            
+            if (gameMode === 'sandbox' && selectedUnitType && selectedTeam) {
+                units.push(new Unit(selectedTeam, selectedUnitType, worldPos.x, worldPos.y));
+                if (navigator.vibrate) navigator.vibrate(30);
+            } else if (gameMode === 'aibattle' && supportTeam) {
+                const now = Date.now();
+                const supportCount = units.filter(u => u.team === supportTeam && u.isPlayerSupport).length;
+                
+                if (now - PLAYER_ECONOMY.lastSpawn > PLAYER_ECONOMY.spawnDelay && 
+                    supportCount < MAX_SUPPORT_UNITS && PLAYER_ECONOMY.gold >= 100) {
+                    
+                    const unit = new Unit(supportTeam, 'swordsman', worldPos.x, worldPos.y);
+                    unit.isPlayerSupport = true;
+                    unit.stats = { ...UNIT_TYPES.swordsman, hp: 150, damage: 30, cost: 100 };
+                    unit.hp = 150;
+                    unit.maxHp = 150;
+                    units.push(unit);
+                    
+                    PLAYER_ECONOMY.gold -= 100;
+                    PLAYER_ECONOMY.lastSpawn = now;
+                    if (navigator.vibrate) navigator.vibrate(30);
+                }
+            }
+            
+            draw();
+        }
+
+        canvas.addEventListener('click', handleInput);
+        canvas.addEventListener('touchstart', handleInput, { passive: false });
+
+        function toggleSimulation() {
+            isRunning = !isRunning;
+            const btn = document.getElementById('startBtn');
+            btn.textContent = isRunning ? 'PAUSE' : 'START';
+            btn.classList.toggle('btn-pause', isRunning);
+            btn.classList.toggle('btn-start', !isRunning);
+            
+            if (isRunning) {
+                lastTime = performance.now();
+                gameLoop();
+            } else {
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        function resetSimulation() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            const btn = document.getElementById('startBtn');
+            btn.textContent = 'START';
+            btn.classList.remove('btn-pause');
+            btn.classList.add('btn-start');
+            
+            units.length = 0;
+            projectiles.length = 0;
+            particles.length = 0;
+            effects.length = 0;
+            
+            AI_ECONOMY.red.gold = 500;
+            AI_ECONOMY.blue.gold = 500;
+            AI_ECONOMY.red.lastSpawn = 0;
+            AI_ECONOMY.blue.lastSpawn = 0;
+            
+            PLAYER_ECONOMY.gold = 150;
+            PLAYER_ECONOMY.lastSpawn = 0;
+            
+            generateDecorations();
+            draw();
+        }
+
+        // ==================== GAME LOOP ====================
+        function gameLoop() {
+            if (!isRunning) return;
+            
+            const currentTime = performance.now();
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            
+            frameCount++;
+            if (currentTime - lastFpsTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsTime = currentTime;
+                document.getElementById('fps').textContent = `FPS: ${fps}`;
+            }
+            
+            update(deltaTime);
+            draw();
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function update(deltaTime) {
+            if (gameMode === 'aibattle') {
+                updateAI(deltaTime);
+                updatePlayerAI(deltaTime);
+            }
+            
+            for (const unit of units) unit.update(deltaTime);
+            
+            for (let i = units.length - 1; i >= 0; i--) {
+                if (units[i].isDead) units.splice(i, 1);
+            }
+            
+            for (const projectile of projectiles) projectile.update();
+            
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                if (!projectiles[i].active) projectiles.splice(i, 1);
+            }
+            
+            for (const particle of particles) particle.update();
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+            
+            for (const effect of effects) effect.update();
+            
+            for (let i = effects.length - 1; i >= 0; i--) {
+                if (effects[i].life <= 0) effects.splice(i, 1);
+            }
+        }
+
+        function draw() {
+            // Hintergrund
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#98FB98');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dekorationen
+            for (const dec of decorations) {
+                drawDecoration(dec);
+            }
+            
+            // Effekte
+            for (const effect of effects) {
+                effect.draw();
+            }
+            
+            // Projektile
+            for (const projectile of projectiles) {
+                projectile.draw();
+            }
+            
+            // Einheiten
+            for (const unit of units) {
+                unit.draw();
+            }
+            
+            // Partikel
+            for (const particle of particles) {
+                particle.draw();
+            }
+        }
+
+        // ==================== INIT ====================
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        });
+        
+        if (document.readyState === 'complete') {
+            resizeCanvas();
+        } else {
+            document.addEventListener('DOMContentLoaded', resizeCanvas);
+        }
+    </script>
+</body>
+</html>
